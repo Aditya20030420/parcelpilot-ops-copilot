@@ -10,6 +10,7 @@
   --danger: #ff6b6b;
   --warn: #ffc148;
   --user: #2d5288;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out for UI motion */
 }
 
 * { box-sizing: border-box; }
@@ -68,10 +69,11 @@ svg { display: block; }
 .example {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left;
   background: var(--panel); border: 1px solid var(--border); color: var(--text);
-  padding: 13px 15px; border-radius: 12px; cursor: pointer; font-size: 13.5px; transition: border-color .15s, transform .05s;
+  padding: 13px 15px; border-radius: 12px; cursor: pointer; font-size: 13.5px;
+  transition: border-color 150ms ease, transform 120ms var(--ease-out);
 }
 .example:hover { border-color: var(--accent); }
-.example:active { transform: translateY(1px); }
+.example:active { transform: scale(0.99); }
 .example-tag {
   flex: none; font-size: 11px; color: var(--muted); background: var(--panel-2);
   border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px;
@@ -79,8 +81,9 @@ svg { display: block; }
 .empty-hint { font-size: 12.5px; line-height: 1.6; opacity: 0.85; }
 
 /* Messages */
-.msg { display: flex; gap: 10px; }
+.msg { display: flex; gap: 10px; animation: msg-in 220ms var(--ease-out) both; }
 .msg.user { justify-content: flex-end; }
+@keyframes msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .avatar {
   flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--panel-2);
   border: 1px solid var(--border); display: grid; place-items: center; margin-top: 2px;
@@ -94,6 +97,8 @@ svg { display: block; }
 }
 
 /* Rendered answer text */
+.text { animation: rise-in 200ms var(--ease-out) both; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .text :first-child { margin-top: 0; }
 .text :last-child { margin-bottom: 0; }
 .text p { margin: 7px 0; }
@@ -119,13 +124,16 @@ svg { display: block; }
   display: flex; align-items: center; gap: 9px;
   background: var(--panel-2); border: 1px solid var(--border);
   border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 9px; font-size: 13px;
+  animation: rise-in 180ms var(--ease-out) both;
+  transition: border-left-color 220ms ease;
 }
 .tool-step.done { border-left-color: var(--accent-2); }
 .tool-step.done .tool-icon { color: var(--accent-2); }
-.tool-icon { display: inline-flex; color: var(--accent); }
+.tool-icon { display: inline-flex; color: var(--accent); transition: color 220ms ease; }
 .tool-text { flex: 1; }
 .tool-detail { color: var(--muted); }
-.tool-done { color: var(--accent-2); font-size: 12px; white-space: nowrap; }
+.tool-done { color: var(--accent-2); font-size: 12px; white-space: nowrap; animation: fade-in 200ms ease both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .spinner {
   width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: var(--accent);
   border-radius: 50%; animation: spin .7s linear infinite;
@@ -133,7 +141,11 @@ svg { display: block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Confirmation card */
-.confirm-card { background: #241f14; border: 1px solid var(--warn); border-radius: 12px; padding: 13px 15px; }
+.confirm-card {
+  background: #241f14; border: 1px solid var(--warn); border-radius: 12px; padding: 13px 15px;
+  animation: card-in 240ms var(--ease-out) both;
+}
+@keyframes card-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
 .confirm-card.confirmed { border-color: var(--accent-2); background: #142720; }
 .confirm-card.cancelled { border-color: var(--border); opacity: 0.75; }
 .confirm-head { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--warn); font-size: 13.5px; }
@@ -141,12 +153,21 @@ svg { display: block; }
 .confirm-payload { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
 .confirm-payload .pk { color: #cdd8ee; font-weight: 600; }
 .confirm-actions { display: flex; gap: 10px; margin-top: 13px; }
-.confirm-yes, .confirm-no { border: none; border-radius: 9px; padding: 9px 16px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.confirm-yes, .confirm-no {
+  border: none; border-radius: 9px; padding: 9px 16px; cursor: pointer; font-weight: 600; font-size: 13.5px;
+  transition: filter 160ms ease, background-color 160ms ease, transform 120ms var(--ease-out);
+}
 .confirm-yes { background: var(--accent-2); color: #06301f; }
-.confirm-yes:hover { filter: brightness(1.08); }
 .confirm-no { background: #333c52; color: var(--text); }
+.confirm-yes:active, .confirm-no:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .confirm-yes:hover { filter: brightness(1.08); }
+  .confirm-no:hover { background: #3c4763; }
+}
 .confirm-state { display: flex; align-items: center; gap: 7px; margin-top: 11px; font-size: 13px; color: var(--muted); }
 .confirm-state.ok { color: var(--accent-2); font-weight: 600; }
+.confirm-state.ok svg { animation: pop 240ms var(--ease-out) both; }
+@keyframes pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 
 /* Composer */
 .composer { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--panel); }
@@ -159,11 +180,26 @@ svg { display: block; }
 .composer button {
   background: var(--accent); color: #fff; border: none; border-radius: 11px;
   padding: 0 22px; font-weight: 600; font-size: 14px; cursor: pointer;
+  transition: background-color 160ms ease, opacity 160ms ease, transform 120ms var(--ease-out);
 }
+.composer button:active:not(:disabled) { transform: scale(0.97); }
 .composer button:disabled { opacity: 0.5; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .composer button:not(:disabled):hover { background: #3f7ef5; }
+}
+.composer input { transition: border-color 160ms ease; }
 
 @media (max-width: 640px) {
   .subtitle { display: none; }
   .bubble { max-width: 88%; }
   .role-blurb { display: none; }
+}
+
+/* Reduced motion: keep comprehension-aiding fades, drop positional movement. */
+@media (prefers-reduced-motion: reduce) {
+  .msg, .text, .tool-step, .confirm-card, .confirm-state.ok svg {
+    animation: fade-in 200ms ease both;
+  }
+  .example:active, .confirm-yes:active, .confirm-no:active,
+  .composer button:active:not(:disabled) { transform: none; }
 }
