@@ -1,104 +1,172 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { login, getLoginHints } from "./api.js";
 import Icon from "./icons.jsx";
+
+function initials(name) {
+  return name
+    .replace(/\(.*?\)/, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [hints, setHints] = useState(null);
+  const shakeRef = useRef(null);
 
   useEffect(() => {
     getLoginHints().then(setHints).catch(() => {});
   }, []);
 
-  async function submit(e) {
-    e.preventDefault();
-    if (!username || !password || busy) return;
+  async function doLogin(u, p) {
     setBusy(true);
     setError("");
     try {
-      const data = await login(username.trim(), password);
+      const data = await login(u.trim(), p);
       onLogin(data);
     } catch (err) {
       setError(err.message || "Login failed");
-    } finally {
+      // retrigger the shake animation
+      if (shakeRef.current) {
+        shakeRef.current.classList.remove("shake");
+        void shakeRef.current.offsetWidth;
+        shakeRef.current.classList.add("shake");
+      }
       setBusy(false);
     }
   }
 
-  function quickFill(u) {
+  function submit(e) {
+    e.preventDefault();
+    if (!username || !password || busy) return;
+    doLogin(username, password);
+  }
+
+  function signInAs(u) {
+    if (busy) return;
     setUsername(u);
     setPassword(hints?.password || "");
-    setError("");
+    doLogin(u, hints?.password || "");
   }
 
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <div className="login-brand">
-          <span className="logo"><Icon name="box" size={26} /></span>
-          <div>
-            <div className="login-title">ParcelPilot</div>
-            <div className="login-sub">Support &amp; Operations sign in</div>
-          </div>
+    <div className="login-page">
+      <aside className="login-hero">
+        <div className="hero-brand">
+          <span className="hero-logo"><Icon name="box" size={26} /></span>
+          <span className="hero-name">ParcelPilot</span>
         </div>
+        <div className="hero-body">
+          <h1>AI support for logistics teams.</h1>
+          <p>One assistant, two experiences — a customer support agent and an internal
+            operations copilot, over the same trusted knowledge base.</p>
+          <ul className="hero-points">
+            <li><span className="hp-ic"><Icon name="shield" size={16} /></span>
+              Customers see only their own account</li>
+            <li><span className="hp-ic"><Icon name="users" size={16} /></span>
+              Staff get cross-account operations tools</li>
+            <li><span className="hp-ic"><Icon name="check" size={16} /></span>
+              Every action is confirmed before it runs</li>
+          </ul>
+        </div>
+        <div className="hero-foot">Assessment demo · synthetic data</div>
+      </aside>
 
-        <form onSubmit={submit} className="login-form">
-          <label className="field">
-            <span>Username</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. marco or northstar"
-              autoFocus
-            />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-            />
-          </label>
-          {error && (
-            <div className="login-error"><Icon name="alert" size={14} /> <span>{error}</span></div>
-          )}
-          <button type="submit" disabled={busy || !username || !password}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-
-        {hints && (
-          <div className="login-demo">
-            <div className="login-demo-head">Demo accounts — password <code>{hints.password}</code></div>
-            <div className="login-demo-cols">
-              <div>
-                <div className="login-demo-label">Staff</div>
-                {hints.staff.map((h) => (
-                  <button key={h.username} className="login-chip" onClick={() => quickFill(h.username)}>
-                    <strong>{h.username}</strong> — {h.label.replace(/^[^—]*—\s*/, "")}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <div className="login-demo-label">Customers</div>
-                {hints.customers.map((h) => (
-                  <button key={h.username} className="login-chip" onClick={() => quickFill(h.username)}>
-                    <strong>{h.username}</strong> — {h.label.replace(/\s*\(customer\)/, "")}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="login-demo-foot">
-              Staff see the internal operations copilot; customers see their own support chat.
-            </div>
+      <main className="login-panel">
+        <div className="login-box" ref={shakeRef}>
+          <div className="login-box-head">
+            <h2>Sign in</h2>
+            <p>Use your ParcelPilot credentials to continue.</p>
           </div>
-        )}
-      </div>
+
+          <form onSubmit={submit} className="login-form">
+            <label className="field">
+              <span>Username</span>
+              <div className="input-wrap">
+                <Icon name="user" size={15} className="input-ic" />
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. marco or northstar"
+                  autoFocus
+                  autoComplete="username"
+                />
+              </div>
+            </label>
+            <label className="field">
+              <span>Password</span>
+              <div className="input-wrap">
+                <Icon name="lock" size={15} className="input-ic" />
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="pw-toggle"
+                  onClick={() => setShowPw((s) => !s)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  <Icon name={showPw ? "eye-off" : "eye"} size={15} />
+                </button>
+              </div>
+            </label>
+            {error && (
+              <div className="login-error"><Icon name="alert" size={14} /> <span>{error}</span></div>
+            )}
+            <button type="submit" className="signin-btn" disabled={busy || !username || !password}>
+              {busy ? <span className="btn-spinner" /> : "Sign in"}
+            </button>
+          </form>
+
+          {hints && (
+            <div className="login-demo">
+              <div className="demo-divider"><span>or continue as a demo user</span></div>
+              <div className="demo-grid">
+                <div className="demo-col">
+                  <div className="demo-col-head"><Icon name="users" size={13} /> Staff</div>
+                  {hints.staff.map((h) => (
+                    <DemoRow key={h.username} h={h} kind="staff"
+                             sub={h.label.replace(/^[^—]*—\s*/, "")} onClick={() => signInAs(h.username)} disabled={busy} />
+                  ))}
+                </div>
+                <div className="demo-col">
+                  <div className="demo-col-head"><Icon name="user" size={13} /> Customers</div>
+                  {hints.customers.map((h) => (
+                    <DemoRow key={h.username} h={h} kind="customer"
+                             sub={h.label.replace(/\s*\(customer\)/, "")} onClick={() => signInAs(h.username)} disabled={busy} />
+                  ))}
+                </div>
+              </div>
+              <div className="demo-foot">All demo passwords are <code>{hints.password}</code>. One click signs you in.</div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
+  );
+}
+
+function DemoRow({ h, sub, kind, onClick, disabled }) {
+  return (
+    <button className={`demo-row ${kind}`} onClick={onClick} disabled={disabled}>
+      <span className="demo-avatar">{initials(sub)}</span>
+      <span className="demo-meta">
+        <span className="demo-user">{h.username}</span>
+        <span className="demo-sub">{sub}</span>
+      </span>
+      <span className="demo-arrow"><Icon name="escalate" size={14} /></span>
+    </button>
   );
 }
