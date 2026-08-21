@@ -32,9 +32,18 @@ class User:
     # Max service-credit value (in account currency) this user may approve directly.
     # Anything larger must be escalated rather than actioned.
     credit_approval_limit: float = 0.0
+    # "staff" = internal ParcelPilot user (may see all accounts, subject to permissions).
+    # "customer" = an external customer, hard-scoped to their own account_id.
+    kind: str = "staff"
+    account_id: str | None = None
+    account_name: str | None = None
 
     def can(self, perm: str) -> bool:
         return perm in self.permissions
+
+    @property
+    def is_customer(self) -> bool:
+        return self.kind == "customer"
 
 
 _ALL_READ = {Perm.READ_DOCS, Perm.READ_DATA, Perm.DETECT_ISSUES}
@@ -67,6 +76,24 @@ USERS: dict[str, User] = {
         ),
         credit_approval_limit=25000.0,
     ),
+    # --- Customers (external). Each is hard-scoped to their own account. They can read
+    # their own data + their agreement + general policy, and raise an escalation to a human.
+    # They can never see other accounts, internal ops views, or take internal actions.
+    "token-cust-northstar": User(
+        id="cust_northstar", name="Northstar Logistics (customer)", role="customer",
+        kind="customer", account_id="ACCT-001", account_name="Northstar Logistics",
+        permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
+    ),
+    "token-cust-lumenworks": User(
+        id="cust_lumenworks", name="LumenWorks (customer)", role="customer",
+        kind="customer", account_id="ACCT-002", account_name="LumenWorks",
+        permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
+    ),
+    "token-cust-beacon": User(
+        id="cust_beacon", name="Beacon Retail (customer)", role="customer",
+        kind="customer", account_id="ACCT-003", account_name="Beacon Retail",
+        permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
+    ),
 }
 
 DEFAULT_TOKEN = "token-agent"
@@ -84,6 +111,9 @@ def public_directory() -> list[dict]:
             "token": token,
             "name": u.name,
             "role": u.role,
+            "kind": u.kind,
+            "account_id": u.account_id,
+            "account_name": u.account_name,
             "permissions": sorted(u.permissions),
             "credit_approval_limit": u.credit_approval_limit,
         }

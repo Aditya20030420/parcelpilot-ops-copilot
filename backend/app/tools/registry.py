@@ -60,6 +60,11 @@ def _redact_rows(rows: list[dict], allow_pii: bool) -> tuple[list[dict], list[st
 def tool_search_documents(ctx: ToolContext, query: str, customer: str | None = None,
                           include_deprecated: bool = False, top_k: int = 5) -> dict:
     _require(ctx, Perm.READ_DOCS, "search documents")
+    # A customer is hard-scoped to their own agreement: force the customer filter to their
+    # own account and never surface deprecated docs or another customer's contract.
+    if ctx.user.is_customer:
+        customer = ctx.user.account_name
+        include_deprecated = False
     hits = ctx.knowledge.docs.search(
         query, top_k=top_k, customer=customer, include_deprecated=include_deprecated
     )
@@ -99,6 +104,22 @@ def tool_query_operational_data(ctx: ToolContext, table: str,
                                 columns: list[str] | None = None,
                                 limit: int = 25) -> dict:
     _require(ctx, Perm.READ_DATA, "read operational data")
+    filters = list(filters or [])
+    # Per-account isolation for customers: enforced HERE, in the data layer, not by asking
+    # the model nicely. We find the account column, strip any account filter the caller
+    # supplied (so it can't be spoofed), and pin the query to the customer's own account.
+    if ctx.user.is_customer:
+        tbl = ctx.knowledge.data.resolve_table(table)
+        if tbl is None:
+            return {"error": f"Unknown table '{table}'."}
+        acct_col = next(
+            (c for c in tbl.columns if re.search(r"account_id|^account$", c, re.I)), None
+        )
+        if acct_col is None:
+            return {"error": "access_denied",
+                    "message": "This information isn't available in the customer view."}
+        filters = [f for f in filters if str(f.get("column")) != acct_col]
+        filters.append({"column": acct_col, "op": "eq", "value": ctx.user.account_id})
     res = ctx.knowledge.data.query_table(table, filters=filters, columns=columns, limit=limit)
     if "rows" in res:
         rows, redacted = _redact_rows(res["rows"], allow_pii=ctx.user.can(Perm.READ_PII))
@@ -383,6 +404,9 @@ def prepare_create_escalation(ctx: ToolContext, reason: str, requested_outcome: 
                               ticket_id: str | None = None, account: str | None = None,
                               priority: str = "normal") -> tuple[str, dict]:
     _require(ctx, Perm.ACT_ESCALATE, "create escalations")
+    # A customer can only ever raise an escalation for their own account.
+    if ctx.user.is_customer:
+        account = ctx.user.account_name
     payload = {
         "ticket_id": ticket_id, "account": account, "reason": reason,
         "requested_outcome": requested_outcome, "priority": priority,

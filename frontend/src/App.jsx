@@ -69,17 +69,29 @@ const ROLE_INFO = {
     title: "Ops Manager",
     blurb: "Full access, including approving larger service credits (up to ₹25,000).",
   },
+  customer: {
+    title: "Customer",
+    blurb: "You only see your own account's orders, tickets and agreement. I'll bring in a human when needed.",
+  },
 };
 
-const EXAMPLES = [
+const STAFF_EXAMPLES = [
   { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Policy + contract" },
   { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Multi-step + calc" },
   { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Proactive view" },
   { q: "For TKT-450, was the historical resolution actually correct?", tag: "Trust check" },
 ];
 
+const CUSTOMER_EXAMPLES = [
+  { q: "Can I cancel my order ORD-1001 without a cancellation fee?", tag: "My order" },
+  { q: "One of my pickups was missed due to carrier fault — am I owed a service credit?", tag: "Service credit" },
+  { q: "What are my support response times?", tag: "My plan" },
+  { q: "I'd like to raise a billing issue with a person.", tag: "Talk to a human" },
+];
+
 export default function App() {
   const [users, setUsers] = useState([]);
+  const [mode, setMode] = useState("staff"); // "staff" | "customer"
   const [token, setToken] = useState("token-agent");
   const [status, setStatus] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -97,8 +109,32 @@ export default function App() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages, busy]);
 
+  const staffUsers = users.filter((u) => u.kind !== "customer");
+  const customerUsers = users.filter((u) => u.kind === "customer");
+  const modeUsers = mode === "customer" ? customerUsers : staffUsers;
   const currentUser = users.find((u) => u.token === token);
   const roleInfo = currentUser ? ROLE_INFO[currentUser.role] : null;
+  const examples = mode === "customer" ? CUSTOMER_EXAMPLES : STAFF_EXAMPLES;
+
+  // Switching context (person or customer/staff mode) starts a fresh conversation so a
+  // staff session and a customer session never share history.
+  function resetConversation() {
+    setMessages([]);
+    sessionRef.current = null;
+  }
+
+  function switchMode(next) {
+    if (next === mode) return;
+    setMode(next);
+    const first = (next === "customer" ? customerUsers : staffUsers)[0];
+    if (first) setToken(first.token);
+    resetConversation();
+  }
+
+  function switchUser(nextToken) {
+    setToken(nextToken);
+    resetConversation();
+  }
 
   function updateLastAssistant(mutator) {
     setMessages((prev) => {
@@ -199,21 +235,35 @@ export default function App() {
         <div className="brand">
           <span className="logo"><Icon name="box" size={24} /></span>
           <div>
-            <div className="title">ParcelPilot Ops Copilot</div>
-            <div className="subtitle">Ask about policies, contracts, orders &amp; tickets — in plain English</div>
+            <div className="title">
+              ParcelPilot {mode === "customer" ? "Support" : "Ops Copilot"}
+            </div>
+            <div className="subtitle">
+              {mode === "customer"
+                ? "Help with your orders, cancellations, credits & account"
+                : "Ask about policies, contracts, orders & tickets — in plain English"}
+            </div>
           </div>
         </div>
         <div className="topbar-right">
-          {status?.snapshot_time && (
+          {mode === "staff" && status?.snapshot_time && (
             <span className="pill" title="All dates and SLAs are measured against this reference time">
               <Icon name="calendar" size={13} />
               Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
             </span>
           )}
+          <div className="mode-toggle" role="tablist" aria-label="View">
+            <button className={mode === "customer" ? "active" : ""} onClick={() => switchMode("customer")}>
+              Customer
+            </button>
+            <button className={mode === "staff" ? "active" : ""} onClick={() => switchMode("staff")}>
+              Staff
+            </button>
+          </div>
           <label className="role-switch">
-            <span>You are signed in as</span>
-            <select value={token} onChange={(e) => setToken(e.target.value)}>
-              {users.map((u) => (
+            <span>{mode === "customer" ? "Signed in as" : "Acting as"}</span>
+            <select value={token} onChange={(e) => switchUser(e.target.value)}>
+              {modeUsers.map((u) => (
                 <option key={u.token} value={u.token}>{u.name}</option>
               ))}
             </select>
@@ -222,8 +272,12 @@ export default function App() {
       </header>
 
       {roleInfo && (
-        <div className="role-banner">
-          <span className="role-tag">{roleInfo.title}</span>
+        <div className={`role-banner ${mode === "customer" ? "customer" : ""}`}>
+          <span className="role-tag">
+            {mode === "customer" && currentUser?.account_name
+              ? `${currentUser.account_name} · account ${currentUser.account_id}`
+              : roleInfo.title}
+          </span>
           <span className="role-blurb">{roleInfo.blurb}</span>
         </div>
       )}
@@ -232,13 +286,18 @@ export default function App() {
         {messages.length === 0 && (
           <div className="empty">
             <div className="empty-icon"><Icon name="message" size={30} /></div>
-            <h2>How can I help?</h2>
+            <h2>{mode === "customer" ? "Hi! How can we help?" : "How can I help?"}</h2>
             <p className="empty-lead">
-              I look things up across your documents and operational data, walk through each
-              step, and <strong>always ask before making any change</strong>. Try one:
+              {mode === "customer" ? (
+                <>I can help with your orders, cancellations, service credits and account —
+                  and I'll <strong>bring in a person</strong> whenever it needs one. Try one:</>
+              ) : (
+                <>I look things up across your documents and operational data, walk through
+                  each step, and <strong>always ask before making any change</strong>. Try one:</>
+              )}
             </p>
             <div className="examples">
-              {EXAMPLES.map((ex) => (
+              {examples.map((ex) => (
                 <button key={ex.q} className="example" onClick={() => send(ex.q)}>
                   <span className="example-q">{ex.q}</span>
                   <span className="example-tag">{ex.tag}</span>
@@ -246,8 +305,9 @@ export default function App() {
               ))}
             </div>
             <p className="empty-hint">
-              Tip: switch roles (top right) to see how access changes — an Analyst can read but
-              not act, an Agent can act with your confirmation.
+              {mode === "customer"
+                ? "You only ever see your own account. Use the Staff tab (top right) to see the internal operations view."
+                : "Tip: switch roles (top right) to see how access changes — an Analyst can read but not act, an Agent can act with your confirmation."}
             </p>
           </div>
         )}
@@ -275,7 +335,9 @@ export default function App() {
         <input
           value={input}
           disabled={busy}
-          placeholder="Ask a question, e.g. “Can LumenWorks cancel ORD-2001 for free?”"
+          placeholder={mode === "customer"
+            ? "Ask about your orders, cancellations or account…"
+            : "Ask a question, e.g. “Can LumenWorks cancel ORD-2001 for free?”"}
           onChange={(e) => setInput(e.target.value)}
         />
         <button type="submit" disabled={busy || !input.trim()}>
