@@ -65,16 +65,16 @@ export default function Login({ onLogin }) {
           <span className="hero-name">ParcelPilot</span>
         </div>
         <div className="hero-body">
-          <h1>AI support for logistics teams.</h1>
-          <p>One assistant, two experiences — a customer support agent and an internal
-            operations copilot, over the same trusted knowledge base.</p>
+          <h1>Support answers your team can trust.</h1>
+          <p>One AI copilot for ParcelPilot — it answers customers and helps staff
+            investigate, grounded in your policies, contracts and live order data.</p>
           <ul className="hero-points">
             <li><span className="hp-ic"><Icon name="shield" size={16} /></span>
-              Customers see only their own account</li>
+              Every answer cites the policy or contract that governs it</li>
             <li><span className="hp-ic"><Icon name="users" size={16} /></span>
-              Staff get cross-account operations tools</li>
+              Scoped access — customers only ever see their own account</li>
             <li><span className="hp-ic"><Icon name="check" size={16} /></span>
-              Every action is confirmed before it runs</li>
+              Confirms before it acts, and escalates when unsure</li>
           </ul>
         </div>
         <div className="hero-foot">Assessment demo · synthetic data</div>
