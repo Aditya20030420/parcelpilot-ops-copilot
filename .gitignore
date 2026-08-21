@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/.env
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Data pack (candidate data — do not commit if sensitive; keep locally)
+# Comment the next lines out if you want the pack tracked in the repo.
+data/*.pdf
+data/*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
