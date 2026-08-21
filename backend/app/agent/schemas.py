@@ -13,6 +13,21 @@ _FILTER_ITEM = {
     "required": ["column", "value"],
 }
 
+def to_openai_tools() -> list[dict]:
+    """Convert the tool schemas to OpenAI chat-completions 'function' format."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["input_schema"],
+            },
+        }
+        for t in TOOL_SCHEMAS
+    ]
+
+
 TOOL_SCHEMAS = [
     {
         "name": "search_documents",

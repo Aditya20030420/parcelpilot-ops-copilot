@@ -16,8 +16,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: str = ""
-    model: str = "claude-sonnet-5"
+    openai_api_key: str = ""
+    model: str = "gpt-4o"
     max_tokens: int = 2048
     # Where the candidate data pack (PDFs + xlsx) lives.
     data_dir: Path = PROJECT_ROOT / "data"

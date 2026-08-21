@@ -3,12 +3,12 @@
 ## Overview
 
 ParcelPilot Ops Copilot is an **internal** support/operations agent. A React chat UI talks
-to a FastAPI backend that runs a Claude tool-use loop over the supplied data pack. The loop
+to a FastAPI backend that runs an OpenAI function-calling loop over the supplied data pack. The loop
 streams events (Server-Sent Events) so the UI can show which tool is running and render a
 confirmation card before any state-changing action executes.
 
 ```
-React UI ──POST /api/chat (SSE)──▶ FastAPI ──▶ AgentRunner (Claude tool-use loop)
+React UI ──POST /api/chat (SSE)──▶ FastAPI ──▶ AgentRunner (OpenAI function-calling loop)
    ▲  tool chips / confirm cards        │            │  chooses tools
    └──── event stream ◀─────────────────┘            ▼
                                           ┌───────── Tools (access-control enforced) ─────────┐
@@ -31,7 +31,7 @@ React UI ──POST /api/chat (SSE)──▶ FastAPI ──▶ AgentRunner (Clau
   permissions, the reference (snapshot) time, the source-authority precedence, and the rules
   for when to escalate rather than answer. Facts always come from tools; the model is told
   not to invent IDs, numbers, dates, or entitlements.
-- **Sessions** hold the full Anthropic message history so context (and confirmations)
+- **Sessions** hold the full OpenAI message history so context (and confirmations)
   persist across turns. In-memory for the demo; Redis/Postgres in production.
 
 ## Tool design

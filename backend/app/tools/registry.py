@@ -204,15 +204,104 @@ def tool_detect_issues(ctx: ToolContext, focus: str | None = None,
     c_sev = col("severity", "priority")
     c_created = col("created", "opened", "date")
     c_sla = col("sla")
-    c_category = col("category", "type", "issue", "subject", "topic")
+    c_subject = col("subject", "title", "summary")
+    c_desc = col("description", "body", "detail", "message")
     c_account = col("account", "customer", "client")
     c_id = col("ticket_id", "ticket", "id", "case")
 
-    findings: list[dict] = []
-    open_rows = [r for r in tbl.rows
-                 if not (c_status and re.search(r"closed|resolved|done", str(r.get(c_status, "")), re.I))]
+    def text_of(r: dict) -> str:
+        return " ".join(str(r.get(c) or "") for c in (c_subject, c_desc) if c).lower()
 
-    # 1) SLA breach / at-risk.
+    def is_open(r: dict) -> bool:
+        return not (c_status and re.search(r"closed|resolved|done", str(r.get(c_status, "")), re.I))
+
+    findings: list[dict] = []
+    open_rows = [r for r in tbl.rows if is_open(r)]
+
+    # 1) High-risk tickets by content (security / systemic outage). Severity isn't a column
+    #    in this dataset, so we infer urgency from the subject/description text.
+    risk_patterns = {
+        "security": (r"api key|api-key|password|secret|credential|token|expos|leak|breach|"
+                     r"unauthor", "high"),
+        "outage": (r"\ball\b|every|failing|fails to|cannot|can'?t|is down|\b500\b|outage|"
+                   r"not working|broken", "high"),
+    }
+    risky = []
+    for r in open_rows:
+        t = text_of(r)
+        for kind, (pat, prio) in risk_patterns.items():
+            if re.search(pat, t):
+                risky.append({"ticket": r.get(c_id), "account": r.get(c_account),
+                              "signal": kind, "priority": prio,
+                              "subject": r.get(c_subject)})
+                break
+    if risky:
+        findings.append({
+            "type": "high_risk_tickets", "priority": "high",
+            "title": f"{len(risky)} open ticket(s) look urgent (security/outage signals)",
+            "detail": risky,
+        })
+
+    # 2) Recurring issues: a significant keyword shared across multiple tickets, including
+    #    *closed* history — a signal of a systemic product problem rather than a one-off.
+    stop = {"the", "and", "for", "with", "that", "this", "after", "still", "shipment",
+            "shipments", "order", "account", "customer", "creation", "create", "fails",
+            "failing", "change", "how", "does", "your", "when", "from", "get", "all", "every"}
+    # Exclude account/customer names so a shared account name doesn't look like a shared topic.
+    acct_tbl = data.resolve_table("accounts")
+    if acct_tbl:
+        name_col = next((c for c in acct_tbl.columns if "name" in c.lower()), None)
+        for row in (acct_tbl.rows if name_col else []):
+            for w in re.findall(r"[a-z]{4,}", str(row.get(name_col, "")).lower()):
+                stop.add(w)
+    buckets: dict[str, list] = {}
+    for r in tbl.rows:
+        seen = set()
+        for tok in re.findall(r"[a-z]{4,}", text_of(r)):
+            if tok in stop or tok in seen:
+                continue
+            seen.add(tok)
+            buckets.setdefault(tok, []).append(r)
+    recurring = []
+    for tok, rows in buckets.items():
+        ids = [x.get(c_id) for x in rows]
+        has_open = any(is_open(x) for x in rows)
+        if len(rows) >= 2 and has_open:
+            recurring.append({"keyword": tok, "count": len(rows), "tickets": ids,
+                              "spans_history": any(not is_open(x) for x in rows)})
+    # De-duplicate near-identical buckets (same ticket set) and prefer history-spanning ones.
+    recurring.sort(key=lambda x: (x["spans_history"], x["count"]), reverse=True)
+    seen_sets: set = set()
+    deduped = []
+    for r in recurring:
+        key = frozenset(r["tickets"])
+        if key in seen_sets:
+            continue
+        seen_sets.add(key)
+        deduped.append(r)
+    if deduped:
+        findings.append({
+            "type": "recurring_issue", "priority": "medium",
+            "title": "Repeated topics across tickets (possible systemic issue)",
+            "detail": deduped[:6],
+        })
+
+    # 3) Accounts under pressure: multiple open tickets at once.
+    if c_account:
+        by_acct: dict[str, list] = {}
+        for r in open_rows:
+            by_acct.setdefault(str(r.get(c_account)), []).append(r.get(c_id))
+        hot = sorted(({"account": k, "open_tickets": len(v), "tickets": v}
+                      for k, v in by_acct.items() if len(v) >= 2),
+                     key=lambda x: x["open_tickets"], reverse=True)
+        if hot:
+            findings.append({
+                "type": "account_pressure", "priority": "medium",
+                "title": "Accounts with multiple open tickets", "detail": hot,
+            })
+
+    # 4) SLA breach by age, when the schema carries created/SLA columns (kept for datasets
+    #    that have them; silently contributes nothing when tickets are all fresh).
     if c_created:
         breaching = []
         for r in open_rows:
@@ -223,45 +312,17 @@ def tool_detect_issues(ctx: ToolContext, focus: str | None = None,
             limit = _num_or(r.get(c_sla), sla_hours) if c_sla else sla_hours
             if age_h >= limit:
                 breaching.append({"ticket": r.get(c_id), "account": r.get(c_account),
-                                  "age_hours": round(age_h, 1), "sla_hours": limit,
-                                  "severity": r.get(c_sev)})
+                                  "age_hours": round(age_h, 1), "sla_hours": limit})
         if breaching:
             breaching.sort(key=lambda x: x["age_hours"], reverse=True)
-            findings.append({
-                "type": "sla_breach",
-                "priority": "high",
-                "title": f"{len(breaching)} open ticket(s) at or past SLA",
-                "detail": breaching[:10],
-            })
+            findings.append({"type": "sla_breach", "priority": "high",
+                             "title": f"{len(breaching)} open ticket(s) at/past SLA",
+                             "detail": breaching[:10]})
 
-    # 2) Clusters by category (possible systemic issue).
-    if c_category:
-        counts: dict[str, list] = {}
-        for r in open_rows:
-            key = str(r.get(c_category) or "unknown").strip().lower()
-            counts.setdefault(key, []).append(r.get(c_id))
-        clusters = [{"category": k, "count": len(v), "tickets": v[:10]}
-                    for k, v in counts.items() if len(v) >= 3 and k != "unknown"]
-        clusters.sort(key=lambda x: x["count"], reverse=True)
-        if clusters:
-            findings.append({
-                "type": "issue_cluster", "priority": "medium",
-                "title": "Repeated issue categories across open tickets",
-                "detail": clusters[:8],
-            })
-
-    # 3) Accounts with multiple open tickets (possible escalating relationship).
-    if c_account:
-        by_acct: dict[str, int] = {}
-        for r in open_rows:
-            by_acct[str(r.get(c_account))] = by_acct.get(str(r.get(c_account)), 0) + 1
-        hot = sorted(({"account": k, "open_tickets": v} for k, v in by_acct.items() if v >= 3),
-                     key=lambda x: x["open_tickets"], reverse=True)
-        if hot:
-            findings.append({
-                "type": "account_pressure", "priority": "medium",
-                "title": "Accounts with several open tickets", "detail": hot[:8],
-            })
+    # 5) Operational anomaly on the order side: carrier-fault orders not yet fulfilled
+    #    (service-credit candidates the team may want to act on proactively).
+    order_findings = _order_anomalies(data, now)
+    findings.extend(order_findings)
 
     return {
         "reference_time": now.isoformat(),
@@ -270,6 +331,42 @@ def tool_detect_issues(ctx: ToolContext, focus: str | None = None,
         "findings": findings or [{"type": "none", "priority": "info",
                                   "title": "No notable patterns detected."}],
     }
+
+
+def _order_anomalies(data, now) -> list[dict]:
+    tbl = None
+    for t in data.list_tables():
+        if re.search(r"order|shipment|booking", t["table"], re.I):
+            tbl = data.resolve_table(t["table"])
+            break
+    if tbl is None:
+        return []
+    cols = {c.lower(): c for c in tbl.columns}
+
+    def c(*names):
+        for n in names:
+            for lc, orig in cols.items():
+                if n in lc:
+                    return orig
+        return None
+
+    c_id, c_status = c("order_id", "order", "id"), c("status", "state")
+    c_cf, c_pickup, c_acct = c("carrier_fault"), c("pickup_actual", "picked"), c("account")
+    if not c_cf:
+        return []
+    flagged = []
+    for r in tbl.rows:
+        if str(r.get(c_cf)).lower() in {"true", "1", "yes"}:
+            picked = r.get(c_pickup) if c_pickup else None
+            status = str(r.get(c_status, "")).upper()
+            if not picked and status not in {"DELIVERED", "CANCELLED", "CANCELED"}:
+                flagged.append({"order": r.get(c_id), "account": r.get(c_acct),
+                                "issue": "carrier-fault pickup not completed"})
+    if flagged:
+        return [{"type": "order_anomaly", "priority": "high",
+                 "title": "Carrier-fault orders awaiting resolution (service-credit candidates)",
+                 "detail": flagged}]
+    return []
 
 
 def _num_or(v: Any, default: float) -> float:

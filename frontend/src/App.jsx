@@ -15,9 +15,9 @@ const TOOL_LABELS = {
 
 const EXAMPLES = [
   "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.",
-  "A pickup is 3 hours late due to carrier fault. Should the customer get a service credit?",
+  "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?",
   "Scan our open tickets for anything urgent or unusual right now.",
-  "What changed between the current support policy and the deprecated one?",
+  "For TKT-450, was the historical resolution actually correct?",
 ];
 
 export default function App() {

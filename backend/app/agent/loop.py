@@ -1,4 +1,4 @@
-"""The agent loop: Claude tool-use with live event emission for the UI.
+"""The agent loop: OpenAI function-calling with live event emission for the UI.
 
 Emits a stream of events so the interface can show which tool is running and render the
 confirmation card for state-changing actions. State-changing tools are intercepted here:
@@ -10,7 +10,7 @@ import asyncio
 import json
 from typing import AsyncIterator
 
-from anthropic import Anthropic
+from openai import OpenAI
 
 from ..auth import AccessDenied
 from ..config import settings
@@ -22,19 +22,19 @@ from ..tools.registry import (
     prepare_action,
 )
 from .prompts import build_system_prompt
-from .schemas import TOOL_SCHEMAS
+from .schemas import to_openai_tools
 
-_client: Anthropic | None = None
+_client: OpenAI | None = None
 
 
-def _get_client() -> Anthropic:
+def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        if not settings.anthropic_api_key:
+        if not settings.openai_api_key:
             raise RuntimeError(
-                "ANTHROPIC_API_KEY is not set. Add it to backend/.env before chatting."
+                "OPENAI_API_KEY is not set. Add it to backend/.env before chatting."
             )
-        _client = Anthropic(api_key=settings.anthropic_api_key)
+        _client = OpenAI(api_key=settings.openai_api_key)
     return _client
 
 
@@ -59,54 +59,63 @@ class AgentRunner:
         self.ctx = ctx
         self.session = session
 
-    async def run(self, injected_user_content) -> AsyncIterator[dict]:
-        """Append a user turn (str or content blocks) and drive the loop to completion."""
+    async def run(self, injected_user_content: str) -> AsyncIterator[dict]:
+        """Append a user turn and drive the tool-calling loop to completion."""
         self.session.messages.append({"role": "user", "content": injected_user_content})
-        system = build_system_prompt(self.ctx)
+        system = {"role": "system", "content": build_system_prompt(self.ctx)}
+        tools = to_openai_tools()
 
         max_iters = 8
         for _ in range(max_iters):
             try:
                 resp = await asyncio.to_thread(
-                    _get_client().messages.create,
+                    _get_client().chat.completions.create,
                     model=settings.model,
                     max_tokens=settings.max_tokens,
-                    system=system,
-                    tools=TOOL_SCHEMAS,
-                    messages=self.session.messages,
+                    messages=[system, *self.session.messages],
+                    tools=tools,
+                    tool_choice="auto",
                 )
             except Exception as e:  # noqa: BLE001
                 yield {"type": "error", "message": f"Model call failed: {e}"}
                 return
 
-            assistant_blocks = [b.model_dump() for b in resp.content]
-            self.session.messages.append({"role": "assistant", "content": assistant_blocks})
+            msg = resp.choices[0].message
+            tool_calls = msg.tool_calls or []
 
-            # Emit any assistant text.
-            for b in assistant_blocks:
-                if b.get("type") == "text" and b.get("text", "").strip():
-                    yield {"type": "assistant_text", "text": b["text"]}
+            # Persist the assistant turn in a re-sendable shape.
+            assistant_entry: dict = {"role": "assistant", "content": msg.content or ""}
+            if tool_calls:
+                assistant_entry["tool_calls"] = [
+                    {"id": tc.id, "type": "function",
+                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                    for tc in tool_calls
+                ]
+            self.session.messages.append(assistant_entry)
 
-            if resp.stop_reason != "tool_use":
+            if msg.content and msg.content.strip():
+                yield {"type": "assistant_text", "text": msg.content}
+
+            if not tool_calls:
                 yield {"type": "done"}
                 return
 
-            tool_uses = [b for b in assistant_blocks if b.get("type") == "tool_use"]
-            tool_results = []
             paused_for_confirmation = False
-
-            for tu in tool_uses:
-                name, args, tid = tu["name"], tu.get("input", {}) or {}, tu["id"]
+            for tc in tool_calls:
+                name = tc.function.name
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    args = {}
                 yield {"type": "tool_call", "name": name, "args": args}
 
                 if is_state_changing(name):
                     try:
                         pending = prepare_action(self.ctx, name, args)
                     except AccessDenied as e:
-                        tool_results.append(_tr(tid, {"error": "access_denied",
-                                                      "message": e.message}))
-                        yield {"type": "tool_result", "name": name,
-                               "summary": "access denied"}
+                        self.session.messages.append(
+                            _tool_msg(tc.id, {"error": "access_denied", "message": e.message}))
+                        yield {"type": "tool_result", "name": name, "summary": "access denied"}
                         continue
                     self.ctx.store.add_pending(pending)
                     yield {
@@ -116,7 +125,7 @@ class AgentRunner:
                         "summary": pending.summary,
                         "payload": pending.payload,
                     }
-                    tool_results.append(_tr(tid, {
+                    self.session.messages.append(_tool_msg(tc.id, {
                         "status": "prepared_awaiting_confirmation",
                         "action_id": pending.action_id,
                         "summary": pending.summary,
@@ -128,24 +137,18 @@ class AgentRunner:
                     result = dispatch_read(self.ctx, name, args)
                     yield {"type": "tool_result", "name": name,
                            "summary": _summarise_result(name, result)}
-                    tool_results.append(_tr(tid, result))
+                    self.session.messages.append(_tool_msg(tc.id, result))
 
-            self.session.messages.append({"role": "user", "content": tool_results})
-
-            # Let the model produce its closing summary after preparing an action,
-            # then it will stop (it's instructed not to re-call the tool).
+            # After preparing an action, let the model produce its closing summary, then it
+            # will stop (it's instructed not to re-call the tool).
             if paused_for_confirmation:
                 continue
 
-        # Safety valve if the model loops.
         yield {"type": "assistant_text",
                "text": "I've reached the step limit for this turn. Could you narrow the request?"}
         yield {"type": "done"}
 
 
-def _tr(tool_use_id: str, content: dict) -> dict:
-    return {
-        "type": "tool_result",
-        "tool_use_id": tool_use_id,
-        "content": json.dumps(content, default=str),
-    }
+def _tool_msg(tool_call_id: str, content: dict) -> dict:
+    return {"role": "tool", "tool_call_id": tool_call_id,
+            "content": json.dumps(content, default=str)}

@@ -35,7 +35,8 @@ The agent has **six read tools** and **three state-changing tools**:
   queries with **PII redaction**.
 - `compute` — deterministic service-credit / duration math (done in code, not the model).
 - `get_reference_time` — the dataset snapshot time used as "now".
-- `detect_issues` — proactive scan for SLA breaches, issue clusters, accounts under pressure.
+- `detect_issues` — proactive scan for urgent tickets (security/outage), recurring issues
+  across current + historical tickets, accounts under pressure, and carrier-fault orders.
 - `create_escalation`, `update_ticket`, `create_follow_up_task` — **confirmation-gated**.
 
 ---
@@ -44,7 +45,7 @@ The agent has **six read tools** and **three state-changing tools**:
 
 ### 0. Prerequisites
 - Python 3.11+, Node 18+
-- An Anthropic API key
+- An OpenAI API key
 
 ### 1. Backend
 
@@ -53,7 +54,7 @@ cd backend
 python -m venv .venv
 .venv/Scripts/activate        # Windows;  source .venv/bin/activate on macOS/Linux
 pip install -r requirements.txt
-cp .env.example .env          # then edit .env and set ANTHROPIC_API_KEY
+cp .env.example .env          # then edit .env and set OPENAI_API_KEY
 python scripts/make_sample_data.py   # optional: writes a stand-in data pack to ../sample_data
 uvicorn app.main:app --reload --port 8000
 ```
@@ -88,10 +89,13 @@ Use the **role switcher** (top right) to act as:
 
 Example prompts:
 - *"Can Northstar cancel ORD-1001 without a cancellation fee? Explain why."*
-- *"A pickup is 3 hours late due to carrier fault. Should the customer get a service credit?"*
+- *"ORD-2002 missed its pickup due to carrier fault. Is the customer owed a service credit, and how much?"*
 - *"Scan our open tickets for anything urgent or unusual."*
 - *"What changed between the current support policy and the deprecated one?"*
-- As Riya: *"Escalate the billing dispute on TKT-5004"* → watch it get **denied** in the tool layer.
+- *"For TKT-450, was the historical resolution correct?"* → the agent should distrust the
+  stale ticket note and verify against current policy/contract.
+- As Riya (analyst): *"Escalate the security issue on TKT-505"* → watch it get **denied** in
+  the tool layer; switch to Marco/Dana and it prepares an escalation for confirmation.
 
 `GET /api/audit` returns the side effects any confirmed action committed (handy for the demo).
 
@@ -106,7 +110,7 @@ backend/
     config.py          settings (.env)
     auth.py            mock staff users, roles, permissions
     agent/
-      loop.py          Claude tool-use loop + event stream + confirmation interception
+      loop.py          OpenAI function-calling loop + event stream + confirmation interception
       prompts.py       system prompt (reliability precedence, escalation rules)
       schemas.py       tool JSON schemas
     tools/
