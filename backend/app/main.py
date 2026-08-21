@@ -6,11 +6,18 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .agent.loop import AgentRunner
-from .auth import Perm, public_directory, resolve_user
+from .auth import (
+    Perm,
+    authenticate,
+    demo_login_hints,
+    public_directory,
+    resolve_user,
+    user_public,
+)
 from .config import settings
 from .core.knowledge import knowledge
 from .core.session import store
@@ -44,6 +51,11 @@ class ConfirmRequest(BaseModel):
     approved: bool
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 # --- helpers ---------------------------------------------------------------
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, default=str)}\n\n"
@@ -66,6 +78,21 @@ _ACTION_PERM = {
 @app.get("/api/status")
 def status():
     return knowledge.status()
+
+
+@app.get("/api/login-hints")
+def login_hints():
+    """Demo credentials shown on the login page (assessment convenience)."""
+    return demo_login_hints()
+
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    result = authenticate(req.username, req.password)
+    if result is None:
+        return JSONResponse(status_code=401, content={"error": "Invalid username or password."})
+    token, user = result
+    return {"token": token, "user": user_public(user)}
 
 
 @app.get("/api/users")

@@ -91,16 +91,18 @@ cd frontend && npm run build       # emits frontend/dist
 
 ## Trying it
 
-Use the **Customer / Staff toggle** (top right) to switch context.
+**Sign in** on the login page — everyone logs in with a username; the app routes staff to
+the internal ops copilot and customers to their own support chat. All demo passwords are
+`demo123`, and the login page lists the accounts (click one to fill it in):
 
-**Staff view** — pick a role:
-- **Riya — Support Analyst**: read-only (docs, data, ops view); actions denied.
-- **Marco — Support Agent**: read + PII + can prepare actions; credit approval limit ₹2,000.
-- **Dana — Ops Manager**: everything, incl. larger approvals (₹25,000).
+**Staff logins** (internal ops copilot):
+- `riya` — Support Analyst: read-only (docs, data, ops view); actions denied.
+- `marco` — Support Agent: read + PII + can prepare actions; credit approval limit ₹2,000.
+- `dana` — Ops Manager: everything, incl. larger approvals (₹25,000).
 
-**Customer view** — pick a customer (Northstar / LumenWorks / Beacon). Each is hard-scoped to
-its own account: try *"What is the status of order ORD-2001?"* as Northstar and it returns
-**nothing** (ORD-2001 belongs to another account). Customer-friendly examples:
+**Customer logins** (own-account support chat) — `northstar`, `lumenworks`, `beacon`. Each is
+hard-scoped to its own account: sign in as `northstar` and ask *"What is the status of order
+ORD-2001?"* — it returns **nothing** (ORD-2001 belongs to another account). Customer examples:
 - *"Can I cancel my order ORD-1001 without a cancellation fee?"*
 - *"One of my pickups was missed due to carrier fault — am I owed a service credit?"*
 - *"I'd like to raise a billing issue with a person."* (prepares an escalation to confirm)

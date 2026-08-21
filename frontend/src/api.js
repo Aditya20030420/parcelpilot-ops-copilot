@@ -49,6 +49,22 @@ export function confirm(sessionId, actionId, approved, token, onEvent) {
   );
 }
 
+export async function login(username, password) {
+  const res = await fetch(`${API_BASE}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Login failed");
+  return data; // { token, user }
+}
+
+export async function getLoginHints() {
+  const res = await fetch(`${API_BASE}/api/login-hints`);
+  return res.json();
+}
+
 export async function getUsers() {
   const res = await fetch(`${API_BASE}/api/users`);
   return res.json();

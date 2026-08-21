@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { chat, confirm, getUsers, getStatus } from "./api.js";
+import { chat, confirm, getStatus } from "./api.js";
 import { renderMarkdown } from "./markdown.js";
 import Icon from "./icons.jsx";
+import Login from "./Login.jsx";
+
+const AUTH_KEY = "pp_auth";
 
 // Turn a tool call into a plain-English step the user can follow.
 function describeTool(name, args = {}) {
@@ -90,9 +93,13 @@ const CUSTOMER_EXAMPLES = [
 ];
 
 export default function App() {
-  const [users, setUsers] = useState([]);
-  const [mode, setMode] = useState("staff"); // "staff" | "customer"
-  const [token, setToken] = useState("token-agent");
+  const [auth, setAuth] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    } catch {
+      return null;
+    }
+  });
   const [status, setStatus] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -101,7 +108,6 @@ export default function App() {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    getUsers().then((d) => setUsers(d.users || []));
     getStatus().then(setStatus).catch(() => {});
   }, []);
 
@@ -109,32 +115,27 @@ export default function App() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages, busy]);
 
-  const staffUsers = users.filter((u) => u.kind !== "customer");
-  const customerUsers = users.filter((u) => u.kind === "customer");
-  const modeUsers = mode === "customer" ? customerUsers : staffUsers;
-  const currentUser = users.find((u) => u.token === token);
-  const roleInfo = currentUser ? ROLE_INFO[currentUser.role] : null;
-  const examples = mode === "customer" ? CUSTOMER_EXAMPLES : STAFF_EXAMPLES;
-
-  // Switching context (person or customer/staff mode) starts a fresh conversation so a
-  // staff session and a customer session never share history.
-  function resetConversation() {
+  function handleLogin(data) {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(data));
     setMessages([]);
     sessionRef.current = null;
+    setAuth(data);
   }
 
-  function switchMode(next) {
-    if (next === mode) return;
-    setMode(next);
-    const first = (next === "customer" ? customerUsers : staffUsers)[0];
-    if (first) setToken(first.token);
-    resetConversation();
+  function logout() {
+    localStorage.removeItem(AUTH_KEY);
+    setMessages([]);
+    sessionRef.current = null;
+    setAuth(null);
   }
 
-  function switchUser(nextToken) {
-    setToken(nextToken);
-    resetConversation();
-  }
+  if (!auth) return <Login onLogin={handleLogin} />;
+
+  const token = auth.token;
+  const currentUser = auth.user;
+  const mode = currentUser.kind === "customer" ? "customer" : "staff";
+  const roleInfo = ROLE_INFO[currentUser.role];
+  const examples = mode === "customer" ? CUSTOMER_EXAMPLES : STAFF_EXAMPLES;
 
   function updateLastAssistant(mutator) {
     setMessages((prev) => {
@@ -252,22 +253,10 @@ export default function App() {
               Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
             </span>
           )}
-          <div className="mode-toggle" role="tablist" aria-label="View">
-            <button className={mode === "customer" ? "active" : ""} onClick={() => switchMode("customer")}>
-              Customer
-            </button>
-            <button className={mode === "staff" ? "active" : ""} onClick={() => switchMode("staff")}>
-              Staff
-            </button>
+          <div className="who">
+            <span className="who-name">{currentUser.name}</span>
+            <button className="logout" onClick={logout}>Sign out</button>
           </div>
-          <label className="role-switch">
-            <span>{mode === "customer" ? "Signed in as" : "Acting as"}</span>
-            <select value={token} onChange={(e) => switchUser(e.target.value)}>
-              {modeUsers.map((u) => (
-                <option key={u.token} value={u.token}>{u.name}</option>
-              ))}
-            </select>
-          </label>
         </div>
       </header>
 
@@ -306,8 +295,8 @@ export default function App() {
             </div>
             <p className="empty-hint">
               {mode === "customer"
-                ? "You only ever see your own account. Use the Staff tab (top right) to see the internal operations view."
-                : "Tip: switch roles (top right) to see how access changes — an Analyst can read but not act, an Agent can act with your confirmation."}
+                ? "You only ever see your own account. Sign out to log in as a different customer or as staff."
+                : "Signed in as staff. Sign out and log in as another user (e.g. an analyst, or a customer) to see how access changes."}
             </p>
           </div>
         )}

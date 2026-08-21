@@ -98,10 +98,64 @@ USERS: dict[str, User] = {
 
 DEFAULT_TOKEN = "token-agent"
 
+# --- Login credentials (mock) ----------------------------------------------
+# username -> (token, password). Real systems verify against an IdP; here we keep a small
+# demo directory. All demo passwords are the same to make the assessment easy to try.
+DEMO_PASSWORD = "demo123"
+LOGINS: dict[str, dict] = {
+    # Staff
+    "riya":       {"token": "token-analyst",         "password": DEMO_PASSWORD},
+    "marco":      {"token": "token-agent",           "password": DEMO_PASSWORD},
+    "dana":       {"token": "token-manager",         "password": DEMO_PASSWORD},
+    # Customers (sign in with their account handle)
+    "northstar":  {"token": "token-cust-northstar",  "password": DEMO_PASSWORD},
+    "lumenworks": {"token": "token-cust-lumenworks", "password": DEMO_PASSWORD},
+    "beacon":     {"token": "token-cust-beacon",     "password": DEMO_PASSWORD},
+}
+
+
+def authenticate(username: str, password: str) -> tuple[str, User] | None:
+    """Return (token, user) for valid credentials, else None."""
+    entry = LOGINS.get((username or "").strip().lower())
+    if not entry or password != entry["password"]:
+        return None
+    token = entry["token"]
+    return token, USERS[token]
+
+
+def demo_login_hints() -> dict:
+    """Non-secret hints shown on the login page so the assessment is easy to try."""
+    return {
+        "password": DEMO_PASSWORD,
+        "staff": [
+            {"username": "riya", "label": "Riya — Support Analyst (read-only)"},
+            {"username": "marco", "label": "Marco — Support Agent"},
+            {"username": "dana", "label": "Dana — Ops Manager"},
+        ],
+        "customers": [
+            {"username": "northstar", "label": "Northstar Logistics (customer)"},
+            {"username": "lumenworks", "label": "LumenWorks (customer)"},
+            {"username": "beacon", "label": "Beacon Retail (customer)"},
+        ],
+    }
+
 
 def resolve_user(token: str | None) -> User:
-    """Map an auth token to a staff user. Falls back to the default agent for demo ease."""
+    """Map an auth token to a user. Falls back to the default agent for demo ease."""
     return USERS.get(token or "", USERS[DEFAULT_TOKEN])
+
+
+def user_public(user: User) -> dict:
+    """Non-sensitive view of a user for the frontend after login."""
+    return {
+        "name": user.name,
+        "role": user.role,
+        "kind": user.kind,
+        "account_id": user.account_id,
+        "account_name": user.account_name,
+        "permissions": sorted(user.permissions),
+        "credit_approval_limit": user.credit_approval_limit,
+    }
 
 
 def public_directory() -> list[dict]:
