@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { chat, confirm, getUsers, getStatus } from "./api.js";
 import { renderMarkdown } from "./markdown.js";
+import Icon from "./icons.jsx";
 
 // Turn a tool call into a plain-English step the user can follow.
 function describeTool(name, args = {}) {
@@ -8,10 +9,10 @@ function describeTool(name, args = {}) {
   switch (name) {
     case "search_documents": {
       const where = a.customer ? `${a.customer}'s documents` : "the knowledge base";
-      return { icon: "📄", label: `Searching ${where}`, detail: a.query ? `“${a.query}”` : "" };
+      return { icon: "file", label: `Searching ${where}`, detail: a.query ? `“${a.query}”` : "" };
     }
     case "list_data_tables":
-      return { icon: "🗂️", label: "Checking what data is available", detail: "" };
+      return { icon: "grid", label: "Checking what data is available", detail: "" };
     case "query_operational_data": {
       const f = (a.filters || []).find((x) => x && x.value);
       const val = f?.value;
@@ -19,27 +20,27 @@ function describeTool(name, args = {}) {
       if (f?.column?.includes("order")) what = `order ${val}`;
       else if (f?.column?.includes("ticket")) what = `ticket ${val}`;
       else if (f?.column?.includes("account")) what = `account ${val}`;
-      return { icon: "🔎", label: `Looking up ${what}`, detail: "" };
+      return { icon: "search", label: `Looking up ${what}`, detail: "" };
     }
     case "get_reference_time":
-      return { icon: "🕒", label: "Checking the reference date", detail: "" };
+      return { icon: "clock", label: "Checking the reference date", detail: "" };
     case "compute":
       return {
-        icon: "🧮",
+        icon: "calculator",
         label: a.operation === "service_credit" ? "Calculating the service credit"
           : a.operation === "hours_between" ? "Calculating elapsed time" : "Calculating",
         detail: "",
       };
     case "detect_issues":
-      return { icon: "🚨", label: "Scanning support activity for issues", detail: "" };
+      return { icon: "alert", label: "Scanning support activity for issues", detail: "" };
     case "create_escalation":
-      return { icon: "⤴️", label: "Preparing an escalation", detail: "" };
+      return { icon: "escalate", label: "Preparing an escalation", detail: "" };
     case "update_ticket":
-      return { icon: "✏️", label: "Preparing a ticket update", detail: "" };
+      return { icon: "edit", label: "Preparing a ticket update", detail: "" };
     case "create_follow_up_task":
-      return { icon: "📌", label: "Preparing a follow-up task", detail: "" };
+      return { icon: "flag", label: "Preparing a follow-up task", detail: "" };
     default:
-      return { icon: "🔧", label: name, detail: "" };
+      return { icon: "tool", label: name, detail: "" };
   }
 }
 
@@ -150,7 +151,7 @@ export default function App() {
         );
         break;
       case "error":
-        updateLastAssistant((b) => [...b, { kind: "text", text: `⚠️ ${ev.message}`, error: true }]);
+        updateLastAssistant((b) => [...b, { kind: "text", text: ev.message, error: true }]);
         break;
       default:
         break;
@@ -196,7 +197,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">📦</span>
+          <span className="logo"><Icon name="box" size={24} /></span>
           <div>
             <div className="title">ParcelPilot Ops Copilot</div>
             <div className="subtitle">Ask about policies, contracts, orders &amp; tickets — in plain English</div>
@@ -205,7 +206,8 @@ export default function App() {
         <div className="topbar-right">
           {status?.snapshot_time && (
             <span className="pill" title="All dates and SLAs are measured against this reference time">
-              📅 Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
+              <Icon name="calendar" size={13} />
+              Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
             </span>
           )}
           <label className="role-switch">
@@ -229,7 +231,7 @@ export default function App() {
       <div className="chat" ref={scrollRef}>
         {messages.length === 0 && (
           <div className="empty">
-            <div className="empty-icon">💬</div>
+            <div className="empty-icon"><Icon name="message" size={30} /></div>
             <h2>How can I help?</h2>
             <p className="empty-lead">
               I look things up across your documents and operational data, walk through each
@@ -257,7 +259,7 @@ export default function App() {
             </div>
           ) : (
             <div key={i} className="msg assistant">
-              <div className="avatar">🤖</div>
+              <div className="avatar"><Icon name="bot" size={17} /></div>
               <div className="bubble">
                 {m.blocks.length === 0 && busy && i === messages.length - 1 && (
                   <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
@@ -289,7 +291,7 @@ function Block({ b, onResolve }) {
     const d = describeTool(b.name, b.args);
     return (
       <div className={`tool-step ${b.running ? "running" : "done"}`}>
-        <span className="tool-icon">{d.icon}</span>
+        <span className="tool-icon"><Icon name={d.icon} size={15} /></span>
         <span className="tool-text">
           {d.label}
           {d.detail && <span className="tool-detail"> {d.detail}</span>}
@@ -303,11 +305,16 @@ function Block({ b, onResolve }) {
     );
   }
   if (b.kind === "text") {
+    if (b.error) {
+      return (
+        <div className="text error error-row">
+          <Icon name="alert" size={15} />
+          <span>{b.text}</span>
+        </div>
+      );
+    }
     return (
-      <div
-        className={`text ${b.error ? "error" : ""}`}
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }}
-      />
+      <div className="text" dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />
     );
   }
   if (b.kind === "confirm") {
@@ -319,7 +326,8 @@ function Block({ b, onResolve }) {
     return (
       <div className={`confirm-card ${b.status}`}>
         <div className="confirm-head">
-          <span>🔐 Please confirm before I do this</span>
+          <Icon name="lock" size={15} />
+          <span>Please confirm before I do this</span>
         </div>
         <div className="confirm-summary">{b.summary}</div>
         <ul className="confirm-payload">
@@ -338,10 +346,16 @@ function Block({ b, onResolve }) {
         {b.status === "confirming" && <div className="confirm-state">Working on it…</div>}
         {b.status === "confirmed" && (
           <div className="confirm-state ok">
-            ✓ Done{b.result?.escalation_id ? ` — ${b.result.escalation_id}` : b.result?.task_id ? ` — ${b.result.task_id}` : ""}
+            <Icon name="check" size={15} />
+            <span>Done{b.result?.escalation_id ? ` — ${b.result.escalation_id}` : b.result?.task_id ? ` — ${b.result.task_id}` : ""}</span>
           </div>
         )}
-        {b.status === "cancelled" && <div className="confirm-state">✕ Cancelled — nothing was changed</div>}
+        {b.status === "cancelled" && (
+          <div className="confirm-state">
+            <Icon name="x" size={15} />
+            <span>Cancelled — nothing was changed</span>
+          </div>
+        )}
       </div>
     );
   }
