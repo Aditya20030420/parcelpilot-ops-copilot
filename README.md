@@ -8,8 +8,14 @@ follow-up tasks) — always behind an explicit confirmation step.
 
 Built for the CalQuity AI Engineer first-round assessment.
 
-> **Chosen context:** the internal ops/support chatbot (one of the two allowed options).
-> This also lets it address **Client Problem 1 — Proactive Issue Detection** natively.
+> **Both user contexts are built**, switchable from a Customer/Staff toggle in the UI:
+> - **Customer-facing support** — answers a customer's questions about their own orders,
+>   cancellations, credits and agreement, and escalates to a human when needed. Hard-scoped
+>   to the signed-in customer's account (enforced in the data layer).
+> - **Internal ops/support** — helps authorised staff investigate, prioritise and act across
+>   all accounts, with role-based permissions. This context also carries **Client Problem 1
+>   — Proactive Issue Detection**.
+>
 > **Client Problem 2 — Trust & Reliability** is addressed throughout via explicit source
 > authority, conflict resolution, and escalation-on-uncertainty (see `docs/ARCHITECTURE.md`).
 
@@ -85,10 +91,19 @@ cd frontend && npm run build       # emits frontend/dist
 
 ## Trying it
 
-Use the **role switcher** (top right) to act as:
+Use the **Customer / Staff toggle** (top right) to switch context.
+
+**Staff view** — pick a role:
 - **Riya — Support Analyst**: read-only (docs, data, ops view); actions denied.
 - **Marco — Support Agent**: read + PII + can prepare actions; credit approval limit ₹2,000.
 - **Dana — Ops Manager**: everything, incl. larger approvals (₹25,000).
+
+**Customer view** — pick a customer (Northstar / LumenWorks / Beacon). Each is hard-scoped to
+its own account: try *"What is the status of order ORD-2001?"* as Northstar and it returns
+**nothing** (ORD-2001 belongs to another account). Customer-friendly examples:
+- *"Can I cancel my order ORD-1001 without a cancellation fee?"*
+- *"One of my pickups was missed due to carrier fault — am I owed a service credit?"*
+- *"I'd like to raise a billing issue with a person."* (prepares an escalation to confirm)
 
 Example prompts:
 - *"Can Northstar cancel ORD-1001 without a cancellation fee? Explain why."*

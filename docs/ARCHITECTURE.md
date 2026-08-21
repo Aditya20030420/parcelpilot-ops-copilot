@@ -53,6 +53,22 @@ Nine tools in three categories, so the agent has a real choice to make:
 
 Plus `get_reference_time` and `detect_issues` (proactive ops view, Problem 1).
 
+## Two user contexts (customer + staff)
+
+One system serves both contexts the brief describes; the UI toggles between them and the
+backend keys off the signed-in user's `kind`:
+
+- **Customer** (`kind="customer"`) — bound to a single `account_id`. Every data query is
+  force-filtered to that account (see below), document search is pinned to their own
+  agreement, internal tools (`detect_issues`, ticket updates) are denied, and a distinct
+  customer-support system prompt gives a friendly, jargon-free voice that escalates to a
+  human when needed.
+- **Staff** (`kind="staff"`) — internal users who may work across all accounts, subject to
+  role-based permissions (analyst / agent / manager).
+
+Switching context starts a fresh conversation so a staff session and a customer session
+never share history.
+
 ## Access control & privacy (enforced in the tool layer)
 
 - Real enforcement lives in `tools/registry.py`, not the prompt. Each tool checks the
@@ -66,8 +82,11 @@ Plus `get_reference_time` and `detect_issues` (proactive ops view, Problem 1).
   or execute any action; an agent can act up to a credit-approval limit; a manager can
   approve larger credits. Authorization is **re-checked at execution time** in `/api/confirm`,
   not only at prepare time.
-- For a customer-facing variant the same layer would additionally pin every query to the
-  authenticated `account_id`; that hook is where per-account isolation would live.
+- **Customer per-account isolation** is enforced here: `query_operational_data` finds the
+  account column, **strips any account filter the caller supplied** (so it can't be spoofed),
+  and pins the query to the customer's own `account_id`; `search_documents` forces the
+  customer scope to their own agreement. A customer asking about another account's order gets
+  zero rows — the model never sees the data, so it can't leak it.
 
 ## Document & structured-data handling
 

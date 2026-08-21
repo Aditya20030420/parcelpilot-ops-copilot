@@ -2,9 +2,14 @@
 
 ## Which client problem I chose, and how I addressed it
 
-I built the **internal support/operations chatbot**, which let me address **both** client
-problems, with primary focus on **Problem 1 — Proactive Issue Detection** and Problem 2
-woven through the core.
+I built **both user contexts** (customer-facing support + internal ops), and addressed
+**both** client problems — with primary focus on **Problem 1 — Proactive Issue Detection**
+(in the internal context) and Problem 2 woven through the core of both.
+
+The customer context is hard-scoped to the signed-in account and has a friendly,
+escalate-when-unsure support voice; the internal context gives authorised staff cross-account
+investigation with role-based permissions. They share one agent/tool/retrieval core, which
+keeps the trust and access-control logic in one place.
 
 **Problem 1 — Proactive Issue Detection.** Beyond answering questions reactively, an
 authorised user can ask the agent to scan support activity, and it calls `detect_issues`,
