@@ -122,3 +122,8 @@ acknowledge and continue any remaining steps.
   rather than token-by-token, to keep the loop simple. Token streaming is a small add.
 - **Deterministic calc in code** — removes a class of arithmetic hallucinations at the cost of
   a few narrow tool operations rather than free-form reasoning.
+- **Provider-agnostic via the OpenAI SDK** — the agent talks to any OpenAI-compatible endpoint
+  (OpenAI, Gemini, Groq). Tested on Gemini `gemini-3.5-flash-lite`. Gemini 3 "thinking" models
+  return a `thought_signature` on tool calls that must be echoed back on the next request;
+  the loop captures it from `tool_calls[].extra_content` and replays it, and it retries briefly
+  on free-tier rate limits.

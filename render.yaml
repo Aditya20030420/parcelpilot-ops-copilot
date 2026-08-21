@@ -10,10 +10,12 @@ services:
       cd frontend && npm install && npm run build
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false            # set this in the Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false            # set this in the Render dashboard (Gemini/OpenAI/Groq key)
+      - key: OPENAI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
       - key: MODEL
-        value: claude-sonnet-5
+        value: gemini-3.5-flash-lite
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: CORS_ORIGINS

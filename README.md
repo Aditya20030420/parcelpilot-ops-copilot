@@ -45,7 +45,10 @@ The agent has **six read tools** and **three state-changing tools**:
 
 ### 0. Prerequisites
 - Python 3.11+, Node 18+
-- An OpenAI API key
+- An API key for any **OpenAI-compatible** provider. The agent is built on the OpenAI SDK,
+  so it runs on OpenAI, **Google Gemini** (free tier, no card), or **Groq** (free) by just
+  setting the key + base URL + model in `backend/.env` (see `.env.example`). This build was
+  tested end-to-end on Gemini `gemini-3.5-flash-lite`.
 
 ### 1. Backend
 

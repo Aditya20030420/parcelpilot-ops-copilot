@@ -34,7 +34,10 @@ def _get_client() -> OpenAI:
             raise RuntimeError(
                 "OPENAI_API_KEY is not set. Add it to backend/.env before chatting."
             )
-        _client = OpenAI(api_key=settings.openai_api_key)
+        kwargs = {"api_key": settings.openai_api_key}
+        if settings.openai_base_url:
+            kwargs["base_url"] = settings.openai_base_url
+        _client = OpenAI(**kwargs)
     return _client
 
 
@@ -59,6 +62,28 @@ class AgentRunner:
         self.ctx = ctx
         self.session = session
 
+    async def _create(self, system: dict, tools: list[dict]):
+        """Call the model, retrying briefly on transient rate limits (free-tier friendly)."""
+        from openai import RateLimitError
+
+        attempts = 3
+        for i in range(attempts):
+            try:
+                return await asyncio.to_thread(
+                    _get_client().chat.completions.create,
+                    model=settings.model,
+                    max_tokens=settings.max_tokens,
+                    messages=[system, *self.session.messages],
+                    tools=tools,
+                    tool_choice="auto",
+                )
+            except RateLimitError as e:
+                wait = _retry_after(e)
+                if i == attempts - 1 or wait > 20:
+                    raise _RateLimited(wait) from e
+                await asyncio.sleep(wait)
+        raise _RateLimited(0)
+
     async def run(self, injected_user_content: str) -> AsyncIterator[dict]:
         """Append a user turn and drive the tool-calling loop to completion."""
         self.session.messages.append({"role": "user", "content": injected_user_content})
@@ -68,14 +93,12 @@ class AgentRunner:
         max_iters = 8
         for _ in range(max_iters):
             try:
-                resp = await asyncio.to_thread(
-                    _get_client().chat.completions.create,
-                    model=settings.model,
-                    max_tokens=settings.max_tokens,
-                    messages=[system, *self.session.messages],
-                    tools=tools,
-                    tool_choice="auto",
-                )
+                resp = await self._create(system, tools)
+            except _RateLimited as e:
+                yield {"type": "error", "message": (
+                    "The model is rate-limited (free-tier quota). Please wait "
+                    f"~{e.retry_after}s and try again.")}
+                return
             except Exception as e:  # noqa: BLE001
                 yield {"type": "error", "message": f"Model call failed: {e}"}
                 return
@@ -86,11 +109,7 @@ class AgentRunner:
             # Persist the assistant turn in a re-sendable shape.
             assistant_entry: dict = {"role": "assistant", "content": msg.content or ""}
             if tool_calls:
-                assistant_entry["tool_calls"] = [
-                    {"id": tc.id, "type": "function",
-                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                    for tc in tool_calls
-                ]
+                assistant_entry["tool_calls"] = [_serialise_tool_call(tc) for tc in tool_calls]
             self.session.messages.append(assistant_entry)
 
             if msg.content and msg.content.strip():
@@ -147,6 +166,38 @@ class AgentRunner:
         yield {"type": "assistant_text",
                "text": "I've reached the step limit for this turn. Could you narrow the request?"}
         yield {"type": "done"}
+
+
+class _RateLimited(Exception):
+    def __init__(self, retry_after: float):
+        self.retry_after = round(retry_after) or 30
+        super().__init__(f"rate limited, retry after {self.retry_after}s")
+
+
+def _retry_after(err) -> float:
+    """Best-effort parse of the provider's suggested retry delay (seconds)."""
+    import re
+
+    msg = str(getattr(err, "message", "") or err)
+    m = re.search(r"retry in ([\d.]+)s|retryDelay['\":\s]+([\d.]+)s", msg, re.I)
+    if m:
+        return float(m.group(1) or m.group(2))
+    return 8.0
+
+
+def _serialise_tool_call(tc) -> dict:
+    """Re-sendable tool-call dict. Preserves provider extras like Gemini's
+    `thought_signature` (carried in `extra_content`), which Gemini 3 thinking models
+    require to be echoed back on the next request when using tools."""
+    d = {
+        "id": tc.id,
+        "type": "function",
+        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+    }
+    extra = getattr(tc, "model_extra", None) or {}
+    if extra.get("extra_content"):
+        d["extra_content"] = extra["extra_content"]
+    return d
 
 
 def _tool_msg(tool_call_id: str, content: dict) -> dict:

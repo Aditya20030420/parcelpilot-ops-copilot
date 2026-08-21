@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     model: str = "gpt-4o"
     max_tokens: int = 2048
+    # Point the OpenAI-compatible client at any provider (Groq, Gemini, OpenRouter, …).
+    # Leave blank for OpenAI itself.
+    openai_base_url: str = ""
     # Where the candidate data pack (PDFs + xlsx) lives.
     data_dir: Path = PROJECT_ROOT / "data"
     # Comma-separated list of allowed CORS origins for the React dev/prod UI.
