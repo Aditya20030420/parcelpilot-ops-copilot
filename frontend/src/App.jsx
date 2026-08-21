@@ -1,23 +1,80 @@
 import React, { useEffect, useRef, useState } from "react";
 import { chat, confirm, getUsers, getStatus } from "./api.js";
+import { renderMarkdown } from "./markdown.js";
 
-const TOOL_LABELS = {
-  search_documents: "📄 Searching documents",
-  list_data_tables: "🗂️ Listing tables",
-  query_operational_data: "🔎 Querying operational data",
-  get_reference_time: "🕒 Reading snapshot time",
-  compute: "🧮 Calculating",
-  detect_issues: "🚨 Scanning for issues",
-  create_escalation: "⤴️ Preparing escalation",
-  update_ticket: "✏️ Preparing ticket update",
-  create_follow_up_task: "📌 Preparing follow-up task",
+// Turn a tool call into a plain-English step the user can follow.
+function describeTool(name, args = {}) {
+  const a = args || {};
+  switch (name) {
+    case "search_documents": {
+      const where = a.customer ? `${a.customer}'s documents` : "the knowledge base";
+      return { icon: "📄", label: `Searching ${where}`, detail: a.query ? `“${a.query}”` : "" };
+    }
+    case "list_data_tables":
+      return { icon: "🗂️", label: "Checking what data is available", detail: "" };
+    case "query_operational_data": {
+      const f = (a.filters || []).find((x) => x && x.value);
+      const val = f?.value;
+      let what = `the ${a.table || "data"} table`;
+      if (f?.column?.includes("order")) what = `order ${val}`;
+      else if (f?.column?.includes("ticket")) what = `ticket ${val}`;
+      else if (f?.column?.includes("account")) what = `account ${val}`;
+      return { icon: "🔎", label: `Looking up ${what}`, detail: "" };
+    }
+    case "get_reference_time":
+      return { icon: "🕒", label: "Checking the reference date", detail: "" };
+    case "compute":
+      return {
+        icon: "🧮",
+        label: a.operation === "service_credit" ? "Calculating the service credit"
+          : a.operation === "hours_between" ? "Calculating elapsed time" : "Calculating",
+        detail: "",
+      };
+    case "detect_issues":
+      return { icon: "🚨", label: "Scanning support activity for issues", detail: "" };
+    case "create_escalation":
+      return { icon: "⤴️", label: "Preparing an escalation", detail: "" };
+    case "update_ticket":
+      return { icon: "✏️", label: "Preparing a ticket update", detail: "" };
+    case "create_follow_up_task":
+      return { icon: "📌", label: "Preparing a follow-up task", detail: "" };
+    default:
+      return { icon: "🔧", label: name, detail: "" };
+  }
+}
+
+function describeResult(name, summary) {
+  if (!summary) return "";
+  if (summary === "access denied") return "Not allowed for your role";
+  const m = summary.match(/^(\d+)/);
+  const n = m ? m[1] : null;
+  if (name === "search_documents") return n ? `Found ${n} relevant passage${n === "1" ? "" : "s"}` : summary;
+  if (name === "query_operational_data") return n ? `${n} record${n === "1" ? "" : "s"} found` : summary;
+  if (name === "detect_issues") return n ? `${n} finding${n === "1" ? "" : "s"}` : summary;
+  if (name === "list_data_tables") return n ? `${n} tables` : summary;
+  return "Done";
+}
+
+const ROLE_INFO = {
+  support_analyst: {
+    title: "Support Analyst",
+    blurb: "Read-only. Can look things up across documents and data, but cannot make changes.",
+  },
+  support_agent: {
+    title: "Support Agent",
+    blurb: "Can look things up and prepare actions for your confirmation. Approves credits up to ₹2,000.",
+  },
+  ops_manager: {
+    title: "Ops Manager",
+    blurb: "Full access, including approving larger service credits (up to ₹25,000).",
+  },
 };
 
 const EXAMPLES = [
-  "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.",
-  "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?",
-  "Scan our open tickets for anything urgent or unusual right now.",
-  "For TKT-450, was the historical resolution actually correct?",
+  { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Policy + contract" },
+  { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Multi-step + calc" },
+  { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Proactive view" },
+  { q: "For TKT-450, was the historical resolution actually correct?", tag: "Trust check" },
 ];
 
 export default function App() {
@@ -40,6 +97,7 @@ export default function App() {
   }, [messages, busy]);
 
   const currentUser = users.find((u) => u.token === token);
+  const roleInfo = currentUser ? ROLE_INFO[currentUser.role] : null;
 
   function updateLastAssistant(mutator) {
     setMessages((prev) => {
@@ -60,10 +118,7 @@ export default function App() {
         sessionRef.current = ev.session_id;
         break;
       case "tool_call":
-        updateLastAssistant((b) => [
-          ...b,
-          { kind: "tool", name: ev.name, args: ev.args, running: true },
-        ]);
+        updateLastAssistant((b) => [...b, { kind: "tool", name: ev.name, args: ev.args, running: true }]);
         break;
       case "tool_result":
         updateLastAssistant((b) => {
@@ -83,30 +138,19 @@ export default function App() {
       case "confirmation_required":
         updateLastAssistant((b) => [
           ...b,
-          {
-            kind: "confirm",
-            action_id: ev.action_id,
-            tool_name: ev.tool_name,
-            summary: ev.summary,
-            payload: ev.payload,
-            status: "pending",
-          },
+          { kind: "confirm", action_id: ev.action_id, tool_name: ev.tool_name,
+            summary: ev.summary, payload: ev.payload, status: "pending" },
         ]);
         break;
       case "action_executed":
         updateLastAssistant((b) =>
           b.map((blk) =>
             blk.kind === "confirm" && blk.status === "confirming"
-              ? { ...blk, status: "confirmed", result: ev.result }
-              : blk
-          )
+              ? { ...blk, status: "confirmed", result: ev.result } : blk)
         );
         break;
       case "error":
-        updateLastAssistant((b) => [
-          ...b,
-          { kind: "text", text: `⚠️ ${ev.message}`, error: true },
-        ]);
+        updateLastAssistant((b) => [...b, { kind: "text", text: `⚠️ ${ev.message}`, error: true }]);
         break;
       default:
         break;
@@ -118,11 +162,7 @@ export default function App() {
     if (!msg || busy) return;
     setInput("");
     setBusy(true);
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: msg },
-      { role: "assistant", blocks: [] },
-    ]);
+    setMessages((prev) => [...prev, { role: "user", text: msg }, { role: "assistant", blocks: [] }]);
     try {
       await chat(msg, sessionRef.current, token, handleEvent);
     } finally {
@@ -132,7 +172,6 @@ export default function App() {
 
   async function resolveAction(block, approved) {
     setBusy(true);
-    // Mark this confirm block, and add a fresh assistant bubble for the follow-up.
     setMessages((prev) => {
       const next = prev.map((m) =>
         m.role === "assistant"
@@ -140,9 +179,7 @@ export default function App() {
               ...m,
               blocks: m.blocks.map((b) =>
                 b.kind === "confirm" && b.action_id === block.action_id
-                  ? { ...b, status: approved ? "confirming" : "cancelled" }
-                  : b
-              ),
+                  ? { ...b, status: approved ? "confirming" : "cancelled" } : b),
             }
           : m
       );
@@ -162,56 +199,54 @@ export default function App() {
           <span className="logo">📦</span>
           <div>
             <div className="title">ParcelPilot Ops Copilot</div>
-            <div className="subtitle">Internal support &amp; operations assistant</div>
+            <div className="subtitle">Ask about policies, contracts, orders &amp; tickets — in plain English</div>
           </div>
         </div>
         <div className="topbar-right">
           {status?.snapshot_time && (
-            <span className="pill" title="Reference time for all date math">
-              🕒 snapshot {status.snapshot_time.replace("T", " ").slice(0, 16)}
+            <span className="pill" title="All dates and SLAs are measured against this reference time">
+              📅 Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
             </span>
           )}
           <label className="role-switch">
-            <span>Acting as</span>
+            <span>You are signed in as</span>
             <select value={token} onChange={(e) => setToken(e.target.value)}>
               {users.map((u) => (
-                <option key={u.token} value={u.token}>
-                  {u.name}
-                </option>
+                <option key={u.token} value={u.token}>{u.name}</option>
               ))}
             </select>
           </label>
         </div>
       </header>
 
-      {currentUser && (
-        <div className="perms-bar">
-          <strong>{currentUser.role}</strong> — can:{" "}
-          {currentUser.permissions.map((p) => (
-            <span key={p} className="perm">
-              {p}
-            </span>
-          ))}
-          {currentUser.credit_approval_limit > 0 && (
-            <span className="perm limit">
-              credit limit ₹{currentUser.credit_approval_limit}
-            </span>
-          )}
+      {roleInfo && (
+        <div className="role-banner">
+          <span className="role-tag">{roleInfo.title}</span>
+          <span className="role-blurb">{roleInfo.blurb}</span>
         </div>
       )}
 
       <div className="chat" ref={scrollRef}>
         {messages.length === 0 && (
           <div className="empty">
-            <h2>Ask about policies, contracts, orders, tickets, or SLAs.</h2>
-            <p>Access is scoped to your role, and any action needs your confirmation.</p>
+            <div className="empty-icon">💬</div>
+            <h2>How can I help?</h2>
+            <p className="empty-lead">
+              I look things up across your documents and operational data, walk through each
+              step, and <strong>always ask before making any change</strong>. Try one:
+            </p>
             <div className="examples">
               {EXAMPLES.map((ex) => (
-                <button key={ex} className="example" onClick={() => send(ex)}>
-                  {ex}
+                <button key={ex.q} className="example" onClick={() => send(ex.q)}>
+                  <span className="example-q">{ex.q}</span>
+                  <span className="example-tag">{ex.tag}</span>
                 </button>
               ))}
             </div>
+            <p className="empty-hint">
+              Tip: switch roles (top right) to see how access changes — an Analyst can read but
+              not act, an Agent can act with your confirmation.
+            </p>
           </div>
         )}
 
@@ -222,30 +257,23 @@ export default function App() {
             </div>
           ) : (
             <div key={i} className="msg assistant">
+              <div className="avatar">🤖</div>
               <div className="bubble">
                 {m.blocks.length === 0 && busy && i === messages.length - 1 && (
-                  <span className="thinking">Thinking…</span>
+                  <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
                 )}
-                {m.blocks.map((b, j) => (
-                  <Block key={j} b={b} onResolve={resolveAction} />
-                ))}
+                {m.blocks.map((b, j) => <Block key={j} b={b} onResolve={resolveAction} />)}
               </div>
             </div>
           )
         )}
       </div>
 
-      <form
-        className="composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-      >
+      <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
         <input
           value={input}
           disabled={busy}
-          placeholder="Ask a support or operations question…"
+          placeholder="Ask a question, e.g. “Can LumenWorks cancel ORD-2001 for free?”"
           onChange={(e) => setInput(e.target.value)}
         />
         <button type="submit" disabled={busy || !input.trim()}>
@@ -258,65 +286,64 @@ export default function App() {
 
 function Block({ b, onResolve }) {
   if (b.kind === "tool") {
+    const d = describeTool(b.name, b.args);
     return (
-      <div className={`tool-chip ${b.running ? "running" : "done"}`}>
-        <span className="tool-label">{TOOL_LABELS[b.name] || b.name}</span>
-        {b.args && Object.keys(b.args).length > 0 && (
-          <code className="tool-args">{compactArgs(b.args)}</code>
-        )}
+      <div className={`tool-step ${b.running ? "running" : "done"}`}>
+        <span className="tool-icon">{d.icon}</span>
+        <span className="tool-text">
+          {d.label}
+          {d.detail && <span className="tool-detail"> {d.detail}</span>}
+        </span>
         {b.running ? (
           <span className="spinner" />
         ) : (
-          <span className="tool-summary">{b.summary}</span>
+          <span className="tool-done">{describeResult(b.name, b.summary)}</span>
         )}
       </div>
     );
   }
   if (b.kind === "text") {
-    return <div className={`text ${b.error ? "error" : ""}`}>{b.text}</div>;
+    return (
+      <div
+        className={`text ${b.error ? "error" : ""}`}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }}
+      />
+    );
   }
   if (b.kind === "confirm") {
+    const nice = (k) =>
+      ({ ticket_id: "Ticket", account: "Account", reason: "Reason", requested_outcome: "Requested outcome",
+         priority: "Priority", new_status: "New status", comment: "Comment", title: "Title",
+         due_at: "Due", notes: "Notes", raised_by: "Raised by", updated_by: "Updated by",
+         owner: "Owner" }[k] || k);
     return (
       <div className={`confirm-card ${b.status}`}>
         <div className="confirm-head">
-          🔐 Action needs your confirmation
-          <span className="confirm-tool">{b.tool_name}</span>
+          <span>🔐 Please confirm before I do this</span>
         </div>
         <div className="confirm-summary">{b.summary}</div>
         <ul className="confirm-payload">
           {Object.entries(b.payload || {})
             .filter(([, v]) => v !== null && v !== undefined && v !== "")
             .map(([k, v]) => (
-              <li key={k}>
-                <span className="pk">{k}</span>: {String(v)}
-              </li>
+              <li key={k}><span className="pk">{nice(k)}</span>: {String(v)}</li>
             ))}
         </ul>
         {b.status === "pending" && (
           <div className="confirm-actions">
-            <button className="confirm-yes" onClick={() => onResolve(b, true)}>
-              Confirm &amp; execute
-            </button>
-            <button className="confirm-no" onClick={() => onResolve(b, false)}>
-              Cancel
-            </button>
+            <button className="confirm-yes" onClick={() => onResolve(b, true)}>Yes, do it</button>
+            <button className="confirm-no" onClick={() => onResolve(b, false)}>Cancel</button>
           </div>
         )}
-        {b.status === "confirming" && <div className="confirm-state">Executing…</div>}
+        {b.status === "confirming" && <div className="confirm-state">Working on it…</div>}
         {b.status === "confirmed" && (
-          <div className="confirm-state ok">✓ Executed{b.result?.escalation_id ? ` — ${b.result.escalation_id}` : b.result?.task_id ? ` — ${b.result.task_id}` : ""}</div>
+          <div className="confirm-state ok">
+            ✓ Done{b.result?.escalation_id ? ` — ${b.result.escalation_id}` : b.result?.task_id ? ` — ${b.result.task_id}` : ""}
+          </div>
         )}
-        {b.status === "cancelled" && <div className="confirm-state">✕ Cancelled</div>}
+        {b.status === "cancelled" && <div className="confirm-state">✕ Cancelled — nothing was changed</div>}
       </div>
     );
   }
   return null;
-}
-
-function compactArgs(args) {
-  const parts = Object.entries(args)
-    .filter(([, v]) => v !== null && v !== undefined && v !== "")
-    .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`);
-  const s = parts.join(", ");
-  return s.length > 90 ? s.slice(0, 90) + "…" : s;
 }
