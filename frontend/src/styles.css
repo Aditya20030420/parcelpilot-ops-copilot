@@ -164,16 +164,19 @@ svg { display: block; }
 .metric-label { color: var(--muted); font-size: 11px; margin-top: 5px; }
 .authority-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .authority-list li {
-  display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start;
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 8px; align-items: start;
   color: var(--text); font-size: 12.5px;
 }
 .authority-list li::before {
   counter-increment: authority; content: counter(authority);
+  grid-column: 1; grid-row: 1 / span 2;
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   background: rgba(246,184,91,0.12); color: #ffd58f; border: 1px solid rgba(246,184,91,0.28); font-size: 11px; font-weight: 700;
 }
+.authority-list li > span { grid-column: 2; grid-row: 1; font-weight: 600; }
+.authority-list li > small { grid-column: 2; grid-row: 2; }
 .authority-list { counter-reset: authority; }
-.authority-list small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.authority-list small { display: block; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .signal-list { display: flex; flex-direction: column; gap: 8px; }
 .signal {
   width: 100%; display: grid; grid-template-columns: 68px minmax(0, 1fr); align-items: center; gap: 8px;
