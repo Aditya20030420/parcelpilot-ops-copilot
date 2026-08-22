@@ -5,6 +5,41 @@ import Icon from "./icons.jsx";
 import Login from "./Login.jsx";
 
 const AUTH_KEY = "pp_auth";
+const CHAT_KEY = (token) => `pp_chat_${token}`;
+
+function getSavedToken() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_KEY) || "null")?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+function loadChat(token) {
+  if (!token) return { messages: [], sessionId: null };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHAT_KEY(token)) || "null");
+    if (saved && Array.isArray(saved.messages)) {
+      return { messages: saved.messages, sessionId: saved.sessionId || null };
+    }
+  } catch {
+    /* ignore corrupt state */
+  }
+  return { messages: [], sessionId: null };
+}
+
+function saveChat(token, sessionId, messages) {
+  if (!token) return;
+  try {
+    localStorage.setItem(CHAT_KEY(token), JSON.stringify({ sessionId, messages }));
+  } catch {
+    /* quota / serialisation issues are non-fatal */
+  }
+}
+
+function clearChat(token) {
+  if (token) localStorage.removeItem(CHAT_KEY(token));
+}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -138,10 +173,12 @@ export default function App() {
     }
   });
   const [status, setStatus] = useState(null);
-  const [messages, setMessages] = useState([]);
+  // Restore this user's conversation from the browser so a refresh (or re-login) keeps the
+  // thread. Keyed per token so a customer and staff never share history.
+  const [messages, setMessages] = useState(() => loadChat(getSavedToken()).messages);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const sessionRef = useRef(null);
+  const sessionRef = useRef(loadChat(getSavedToken()).sessionId);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -152,10 +189,16 @@ export default function App() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages, busy]);
 
+  // Persist the conversation whenever it changes (skip while streaming to avoid churn).
+  useEffect(() => {
+    if (auth && !busy) saveChat(auth.token, sessionRef.current, messages);
+  }, [messages, busy, auth]);
+
   function handleLogin(data) {
     localStorage.setItem(AUTH_KEY, JSON.stringify(data));
-    setMessages([]);
-    sessionRef.current = null;
+    const saved = loadChat(data.token); // restore this user's prior thread, if any
+    setMessages(saved.messages);
+    sessionRef.current = saved.sessionId;
     setAuth(data);
   }
 
@@ -170,6 +213,7 @@ export default function App() {
     if (busy) return;
     setMessages([]);
     sessionRef.current = null;
+    if (auth) clearChat(auth.token);
   }
 
   if (!auth) return <Login onLogin={handleLogin} />;
