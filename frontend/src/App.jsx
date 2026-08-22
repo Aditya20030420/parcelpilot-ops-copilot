@@ -443,11 +443,11 @@ function Sources({ items }) {
 }
 
 const AUTHORITY_STACK = [
-  ["Contract", "Customer-specific terms"],
-  ["Current SOP", "Cancellations and credits"],
-  ["Policy v3", "General support rules"],
-  ["Product docs", "Known behavior"],
-  ["Deprecated/history", "Context only"],
+  ["The customer's contract", "Their own signed agreement — always wins"],
+  ["Current how-to guide", "Today's steps for cancellations & credits"],
+  ["General support policy", "The standard rules for everyone"],
+  ["Product guides", "How the product is known to behave"],
+  ["Old or past answers", "Background only — may be out of date or wrong"],
 ];
 
 function signalsFor(user, mode) {
@@ -470,35 +470,35 @@ function signalsFor(user, mode) {
     ];
   }
   return [
-    ["TKT-501", "Outage-like signal", "What should we do about TKT-501?"],
-    ["TKT-505", "Security signal", "Escalate the possible API key exposure on TKT-505 to security urgently."],
-    ["ORD-2002", "Carrier fault", "Is ORD-2002 eligible for a service credit and how much?"],
+    ["TKT-501", "Shipments are failing", "What should we do about TKT-501?"],
+    ["TKT-505", "Possible security issue", "Escalate the possible API key exposure on TKT-505 to security urgently."],
+    ["ORD-2002", "Missed pickup — owed a credit?", "Is ORD-2002 eligible for a service credit and how much?"],
   ];
 }
 
 function ContextPanel({ status, mode, currentUser, onAsk, busy }) {
   const docs = status?.documents?.documents?.length ?? "-";
-  const chunks = status?.documents?.chunks ?? "-";
   const snapshot = formatDate(status?.snapshot_time);
   const signals = signalsFor(currentUser, mode);
 
   return (
     <aside className="context-panel">
       <section className="context-section identity-section">
-        <div className="panel-kicker">{mode === "customer" ? "Account context" : "Assessment data"}</div>
+        <div className="panel-kicker">{mode === "customer" ? "You're viewing" : "I'm answering from"}</div>
         <div className="context-title">
-          {mode === "customer" ? currentUser.account_name : "Official ParcelPilot pack"}
+          {mode === "customer" ? currentUser.account_name : "ParcelPilot's official info"}
         </div>
         <div className="context-sub">
-          {mode === "customer" ? `Account ${currentUser.account_id}` : `Snapshot ${snapshot}`}
+          {mode === "customer"
+            ? `Only your account (${currentUser.account_id})`
+            : `Everything is up to date as of ${snapshot}`}
         </div>
       </section>
 
       <section className="context-section">
-        <div className="section-title"><Icon name="database" size={14} /> Records</div>
+        <div className="section-title"><Icon name="database" size={14} /> What I can look at</div>
         <div className="metric-grid">
-          <Metric label="Docs" value={docs} />
-          <Metric label="Passages" value={chunks} />
+          <Metric label="Documents" value={docs} />
           <Metric label="Accounts" value={tableRows(status, "accounts")} />
           <Metric label="Orders" value={tableRows(status, "orders")} />
           <Metric label="Tickets" value={tableRows(status, "tickets")} />
@@ -507,7 +507,8 @@ function ContextPanel({ status, mode, currentUser, onAsk, busy }) {
 
       {mode === "staff" && (
         <section className="context-section">
-          <div className="section-title"><Icon name="layers" size={14} /> Source Authority</div>
+          <div className="section-title"><Icon name="layers" size={14} /> If sources disagree, I trust</div>
+          <p className="section-note">Higher on the list wins. This is how I avoid confidently-wrong answers.</p>
           <ol className="authority-list">
             {AUTHORITY_STACK.map(([label, detail]) => (
               <li key={label}>
@@ -520,7 +521,7 @@ function ContextPanel({ status, mode, currentUser, onAsk, busy }) {
       )}
 
       <section className="context-section">
-        <div className="section-title"><Icon name="flag" size={14} /> Try Records</div>
+        <div className="section-title"><Icon name="flag" size={14} /> Questions you can try</div>
         <div className="signal-list">
           {signals.map(([id, title, prompt]) => (
             <button key={id} className="signal" onClick={() => onAsk(prompt)} disabled={busy}>

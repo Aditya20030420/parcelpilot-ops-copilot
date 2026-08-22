@@ -154,6 +154,7 @@ svg { display: block; }
   margin-bottom: 10px;
 }
 .section-title svg { color: var(--accent-2); }
+.section-note { margin: -4px 0 10px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
 .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .metric {
   min-height: 54px; border: 1px solid var(--border-soft); border-radius: 8px; background: rgba(32,38,49,0.9);
