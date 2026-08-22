@@ -76,7 +76,7 @@ export default function Login({ onLogin }) {
               Confirms before it acts, and escalates when unsure</li>
           </ul>
         </div>
-        <div className="hero-foot">Assessment demo · synthetic data</div>
+        <div className="hero-foot">Assessment demo · candidate data pack</div>
       </aside>
 
       <main className="login-panel">

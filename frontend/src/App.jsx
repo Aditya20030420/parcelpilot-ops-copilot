@@ -6,6 +6,17 @@ import Login from "./Login.jsx";
 
 const AUTH_KEY = "pp_auth";
 
+function formatDate(value) {
+  if (!value) return "No snapshot";
+  return value.slice(0, 10);
+}
+
+function tableRows(status, name) {
+  const tables = status?.structured?.tables || [];
+  const hit = tables.find((t) => (t.table || "").toLowerCase().includes(name));
+  return hit?.row_count ?? "-";
+}
+
 function initials(name) {
   const words = (name || "").replace(/\(.*?\)/, "").trim().split(/\s+/).filter(Boolean);
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
@@ -89,23 +100,32 @@ const ROLE_INFO = {
 
 function staffExamples(role) {
   const common = [
-    { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Policy + contract" },
-    { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Proactive view" },
+    { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Contract" },
+    { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Calculation" },
+    { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Ops scan" },
     { q: "For TKT-450, was the historical resolution actually correct?", tag: "Trust check" },
   ];
-  // A read-only analyst can't act — show that boundary; agents/managers get a calc example.
+  // A read-only analyst can't act; agents/managers should see the confirmation flow.
   const fourth = role === "support_analyst"
-    ? { q: "Escalate the security issue on TKT-505 to the security team.", tag: "Access control" }
-    : { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Multi-step + calc" };
+    ? { q: "Escalate the possible API key exposure on TKT-505 to security urgently.", tag: "Access boundary" }
+    : { q: "Escalate the possible API key exposure on TKT-505 to security urgently.", tag: "Confirmation" };
   return [...common, fourth];
 }
 
 const CUSTOMER_EXAMPLES = [
-  { q: "Can I cancel my order ORD-1001 without a cancellation fee?", tag: "My order" },
-  { q: "One of my pickups was missed due to carrier fault — am I owed a service credit?", tag: "Service credit" },
-  { q: "What are my support response times?", tag: "My plan" },
-  { q: "I'd like to raise a billing issue with a person.", tag: "Talk to a human" },
+  { q: "Can I cancel my order ORD-1001 without a cancellation fee?", tag: "Order" },
+  { q: "One of my pickups was missed due to carrier fault — am I owed a service credit?", tag: "Credit" },
+  { q: "What are my support response times?", tag: "Agreement" },
+  { q: "I'd like to raise a billing issue with a person.", tag: "Escalation" },
 ];
+
+function exampleIcon(tag) {
+  if (tag === "Ops scan" || tag === "Access boundary") return "alert";
+  if (tag === "Calculation" || tag === "Credit") return "calculator";
+  if (tag === "Confirmation" || tag === "Escalation") return "escalate";
+  if (tag === "Contract" || tag === "Agreement") return "file";
+  return "search";
+}
 
 export default function App() {
   const [auth, setAuth] = useState(() => {
@@ -289,11 +309,12 @@ export default function App() {
           {mode === "staff" && status?.snapshot_time && (
             <span className="pill" title="All dates and SLAs are measured against this reference time">
               <Icon name="calendar" size={13} />
-              Data as of {status.snapshot_time.slice(0, 10)}
+              Snapshot {formatDate(status.snapshot_time)}
             </span>
           )}
           <button className="newchat" onClick={newChat} disabled={busy} title="Start a new conversation">
-            New chat
+            <Icon name="message" size={14} />
+            <span>New chat</span>
           </button>
           <div className="who">
             <span className={`who-avatar ${mode === "customer" ? "customer" : ""}`}>
@@ -316,69 +337,81 @@ export default function App() {
         </div>
       )}
 
-      <div className="chat" ref={scrollRef}>
-        {messages.length === 0 && (
-          <div className="empty">
-            <div className="empty-icon"><Icon name="message" size={30} /></div>
-            <h2>{mode === "customer" ? "Hi! How can we help?" : "How can I help?"}</h2>
-            <p className="empty-lead">
-              {mode === "customer" ? (
-                <>I can help with your orders, cancellations, service credits and account —
-                  and I'll <strong>bring in a person</strong> whenever it needs one. Try one:</>
-              ) : (
-                <>I look things up across your documents and operational data, walk through
-                  each step, and <strong>always ask before making any change</strong>. Try one:</>
-              )}
-            </p>
-            <div className="examples">
-              {examples.map((ex) => (
-                <button key={ex.q} className="example" onClick={() => send(ex.q)}>
-                  <span className="example-q">{ex.q}</span>
-                  <span className="example-tag">{ex.tag}</span>
-                </button>
-              ))}
-            </div>
-            <p className="empty-hint">
-              {mode === "customer"
-                ? "You only ever see your own account. Sign out to log in as a different customer or as staff."
-                : "Signed in as staff. Sign out and log in as another user (e.g. an analyst, or a customer) to see how access changes."}
-            </p>
-          </div>
-        )}
-
-        {messages.map((m, i) =>
-          m.role === "user" ? (
-            <div key={i} className="msg user">
-              <div className="bubble">{m.text}</div>
-            </div>
-          ) : (
-            <div key={i} className="msg assistant">
-              <div className="avatar"><Icon name="bot" size={17} /></div>
-              <div className="bubble">
-                {m.blocks.length === 0 && busy && i === messages.length - 1 && (
-                  <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
-                )}
-                {m.blocks.map((b, j) => <Block key={j} b={b} onResolve={resolveAction} />)}
-                {m.sources?.length > 0 && <Sources items={m.sources} />}
+      <div className="workspace">
+        <main className="chat-shell">
+          <div className="chat" ref={scrollRef}>
+            {messages.length === 0 && (
+              <div className="empty">
+                <div className="empty-head">
+                  <div className="empty-icon"><Icon name="message" size={28} /></div>
+                  <div>
+                    <h2>{mode === "customer" ? "Start with your account" : "Start with the live queue"}</h2>
+                    <p className="empty-lead">
+                      {mode === "customer" ? (
+                        <>Ask about orders, cancellations, service credits, or an account question that should move to the support team.</>
+                      ) : (
+                        <>Use the official ParcelPilot pack to check policy, contracts, operational records, source conflicts, and confirmation-gated actions.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="examples">
+                  {examples.map((ex) => (
+                    <button key={ex.q} className="example" onClick={() => send(ex.q)}>
+                      <span className="example-main">
+                        <Icon name={exampleIcon(ex.tag)} size={15} />
+                        <span className="example-q">{ex.q}</span>
+                      </span>
+                      <span className="example-tag">{ex.tag}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        )}
-      </div>
+            )}
 
-      <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
-        <input
-          value={input}
-          disabled={busy}
-          placeholder={mode === "customer"
-            ? "Ask about your orders, cancellations or account…"
-            : "Ask a question, e.g. “Can LumenWorks cancel ORD-2001 for free?”"}
-          onChange={(e) => setInput(e.target.value)}
+            {messages.map((m, i) =>
+              m.role === "user" ? (
+                <div key={i} className="msg user">
+                  <div className="bubble">{m.text}</div>
+                </div>
+              ) : (
+                <div key={i} className="msg assistant">
+                  <div className="avatar"><Icon name="bot" size={17} /></div>
+                  <div className="bubble">
+                    {m.blocks.length === 0 && busy && i === messages.length - 1 && (
+                      <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
+                    )}
+                    {m.blocks.map((b, j) => <Block key={j} b={b} onResolve={resolveAction} />)}
+                    {m.sources?.length > 0 && <Sources items={m.sources} />}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+
+          <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
+            <input
+              value={input}
+              disabled={busy}
+              placeholder={mode === "customer"
+                ? "Ask about your orders, cancellations or account..."
+                : "Ask a question, e.g. \"Can LumenWorks cancel ORD-2001 for free?\""}
+              onChange={(e) => setInput(e.target.value)}
+            />
+            <button className="send-btn" type="submit" disabled={busy || !input.trim()} title="Send message" aria-label="Send message">
+              {busy ? <span className="btn-spinner" /> : <Icon name="send" size={17} />}
+            </button>
+          </form>
+        </main>
+
+        <ContextPanel
+          status={status}
+          mode={mode}
+          currentUser={currentUser}
+          onAsk={send}
+          busy={busy}
         />
-        <button type="submit" disabled={busy || !input.trim()}>
-          {busy ? "…" : "Send"}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
@@ -405,6 +438,107 @@ function Sources({ items }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+const AUTHORITY_STACK = [
+  ["Contract", "Customer-specific terms"],
+  ["Current SOP", "Cancellations and credits"],
+  ["Policy v3", "General support rules"],
+  ["Product docs", "Known behavior"],
+  ["Deprecated/history", "Context only"],
+];
+
+function signalsFor(user, mode) {
+  if (mode === "customer") {
+    if (user.account_id === "ACCT-002") {
+      return [
+        ["ORD-2002", "Missed pickup credit", "Was my missed pickup on ORD-2002 eligible for a service credit?"],
+        ["TKT-502", "Bulk upload ticket", "What is the latest on TKT-502?"],
+      ];
+    }
+    if (user.account_id === "ACCT-003") {
+      return [
+        ["ORD-3001", "Cancellation request", "Can I cancel ORD-3001 without a fee?"],
+        ["TKT-503", "Billing contact", "Can you help with TKT-503?"],
+      ];
+    }
+    return [
+      ["ORD-1001", "Cancellation window", "Can I cancel ORD-1001 without a fee?"],
+      ["TKT-501", "Shipment creation issue", "What should happen next on TKT-501?"],
+    ];
+  }
+  return [
+    ["TKT-501", "Outage-like signal", "What should we do about TKT-501?"],
+    ["TKT-505", "Security signal", "Escalate the possible API key exposure on TKT-505 to security urgently."],
+    ["ORD-2002", "Carrier fault", "Is ORD-2002 eligible for a service credit and how much?"],
+  ];
+}
+
+function ContextPanel({ status, mode, currentUser, onAsk, busy }) {
+  const docs = status?.documents?.documents?.length ?? "-";
+  const chunks = status?.documents?.chunks ?? "-";
+  const snapshot = formatDate(status?.snapshot_time);
+  const signals = signalsFor(currentUser, mode);
+
+  return (
+    <aside className="context-panel">
+      <section className="context-section identity-section">
+        <div className="panel-kicker">{mode === "customer" ? "Account context" : "Assessment data"}</div>
+        <div className="context-title">
+          {mode === "customer" ? currentUser.account_name : "Official ParcelPilot pack"}
+        </div>
+        <div className="context-sub">
+          {mode === "customer" ? `Account ${currentUser.account_id}` : `Snapshot ${snapshot}`}
+        </div>
+      </section>
+
+      <section className="context-section">
+        <div className="section-title"><Icon name="database" size={14} /> Records</div>
+        <div className="metric-grid">
+          <Metric label="Docs" value={docs} />
+          <Metric label="Passages" value={chunks} />
+          <Metric label="Accounts" value={tableRows(status, "accounts")} />
+          <Metric label="Orders" value={tableRows(status, "orders")} />
+          <Metric label="Tickets" value={tableRows(status, "tickets")} />
+        </div>
+      </section>
+
+      {mode === "staff" && (
+        <section className="context-section">
+          <div className="section-title"><Icon name="layers" size={14} /> Source Authority</div>
+          <ol className="authority-list">
+            {AUTHORITY_STACK.map(([label, detail]) => (
+              <li key={label}>
+                <span>{label}</span>
+                <small>{detail}</small>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <section className="context-section">
+        <div className="section-title"><Icon name="flag" size={14} /> Try Records</div>
+        <div className="signal-list">
+          {signals.map(([id, title, prompt]) => (
+            <button key={id} className="signal" onClick={() => onAsk(prompt)} disabled={busy}>
+              <span className="signal-id">{id}</span>
+              <span className="signal-title">{title}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    </aside>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="metric">
+      <span className="metric-value">{value}</span>
+      <span className="metric-label">{label}</span>
     </div>
   );
 }
