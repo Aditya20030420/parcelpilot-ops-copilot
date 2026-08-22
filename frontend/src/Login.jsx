@@ -3,14 +3,13 @@ import { login, getLoginHints } from "./api.js";
 import Icon from "./icons.jsx";
 
 function initials(name) {
-  return name
-    .replace(/\(.*?\)/, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+  const clean = name.replace(/\(.*?\)/, "").trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  const w = words[0] || "";
+  const caps = w.match(/[A-Z]/g); // camelCase like "LumenWorks" -> "LW"
+  if (caps && caps.length >= 2) return (caps[0] + caps[1]).toUpperCase();
+  return w.slice(0, 2).toUpperCase();
 }
 
 export default function Login({ onLogin }) {
@@ -138,14 +137,14 @@ export default function Login({ onLogin }) {
                   <div className="demo-col-head"><Icon name="users" size={13} /> Staff</div>
                   {hints.staff.map((h) => (
                     <DemoRow key={h.username} h={h} kind="staff"
-                             sub={h.label.replace(/^[^—]*—\s*/, "")} onClick={() => signInAs(h.username)} disabled={busy} />
+                             onClick={() => signInAs(h.username)} disabled={busy} />
                   ))}
                 </div>
                 <div className="demo-col">
                   <div className="demo-col-head"><Icon name="user" size={13} /> Customers</div>
                   {hints.customers.map((h) => (
                     <DemoRow key={h.username} h={h} kind="customer"
-                             sub={h.label.replace(/\s*\(customer\)/, "")} onClick={() => signInAs(h.username)} disabled={busy} />
+                             onClick={() => signInAs(h.username)} disabled={busy} />
                   ))}
                 </div>
               </div>
@@ -158,13 +157,14 @@ export default function Login({ onLogin }) {
   );
 }
 
-function DemoRow({ h, sub, kind, onClick, disabled }) {
+function DemoRow({ h, kind, onClick, disabled }) {
   return (
-    <button className={`demo-row ${kind}`} onClick={onClick} disabled={disabled}>
-      <span className="demo-avatar">{initials(sub)}</span>
+    <button className={`demo-row ${kind}`} onClick={onClick} disabled={disabled}
+            title={`Sign in as @${h.username}`}>
+      <span className="demo-avatar">{initials(h.name)}</span>
       <span className="demo-meta">
-        <span className="demo-user">{h.username}</span>
-        <span className="demo-sub">{sub}</span>
+        <span className="demo-user">{h.name}</span>
+        <span className="demo-sub">{h.desc} · @{h.username}</span>
       </span>
       <span className="demo-arrow"><Icon name="escalate" size={14} /></span>
     </button>
