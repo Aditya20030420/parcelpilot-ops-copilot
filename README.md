@@ -8,6 +8,11 @@ follow-up tasks) — always behind an explicit confirmation step.
 
 Built for the CalQuity AI Engineer first-round assessment.
 
+**🔗 Live demo:** https://parcelpilot-ops-copilot.onrender.com — sign in with a demo account
+(e.g. `diego` / `demo123` for staff, or `northstar` / `demo123` as a customer). The demo
+accounts are listed on the login page. *(Free tier: the first request after idle may take
+~50s to wake, and the model is on a free 15-requests/min quota.)*
+
 > **Both user contexts are built.** Users sign in on a login page and are routed to the
 > right one automatically — staff to the ops copilot, customers to their own support chat:
 > - **Customer-facing support** — answers a customer's questions about their own orders,
