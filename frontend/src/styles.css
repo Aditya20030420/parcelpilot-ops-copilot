@@ -221,6 +221,7 @@ svg { display: block; }
 .text code { background: #101722; border: 1px solid var(--border); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
 .text strong { color: #fff; }
 .text.error { color: var(--danger); }
+.text-stale { opacity: 0.45; transition: opacity 200ms ease; }
 .error-row { display: flex; align-items: flex-start; gap: 8px; }
 .error-row svg { flex: none; margin-top: 2px; }
 

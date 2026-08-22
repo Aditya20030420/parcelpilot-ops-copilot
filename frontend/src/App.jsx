@@ -383,7 +383,10 @@ export default function App() {
                     {m.blocks.length === 0 && busy && i === messages.length - 1 && (
                       <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
                     )}
-                    {m.blocks.map((b, j) => <Block key={j} b={b} onResolve={resolveAction} />)}
+                    {m.blocks.map((b, j) => (
+                      <Block key={j} b={b} onResolve={resolveAction}
+                             stale={m.blocks.some((x) => x.kind === "confirm" && (x.status === "confirmed" || x.status === "cancelled"))} />
+                    ))}
                     {m.sources?.length > 0 && <Sources items={m.sources} />}
                   </div>
                 </div>
@@ -546,7 +549,7 @@ function Metric({ label, value }) {
   );
 }
 
-function Block({ b, onResolve }) {
+function Block({ b, onResolve, stale }) {
   if (b.kind === "tool") {
     const d = describeTool(b.name, b.args);
     return (
@@ -574,7 +577,8 @@ function Block({ b, onResolve }) {
       );
     }
     return (
-      <div className="text" dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />
+      <div className={`text ${stale ? "text-stale" : ""}`}
+           dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />
     );
   }
   if (b.kind === "confirm") {
