@@ -11,7 +11,9 @@ WORKDIR /app
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ backend/
-COPY data/ data/
+# The real data pack is NOT in the repo; it is rehydrated at runtime from a base64 secret
+# (see app/core/knowledge.py). Create the dir; sample_data is the built-in fallback.
+RUN mkdir -p data
 COPY sample_data/ sample_data/
 # Built UI goes where main.py looks for it: <project_root>/frontend/dist
 COPY --from=ui /ui/dist/ frontend/dist/

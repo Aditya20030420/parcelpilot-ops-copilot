@@ -1,22 +1,16 @@
-# Render blueprint: single web service hosting the FastAPI API + the built React UI.
-# The build step compiles the frontend into frontend/dist, which FastAPI serves at "/".
+# Render blueprint: one Docker web service hosting the FastAPI API + built React UI.
+# The data pack is NOT in the repo — add it in the Render dashboard as a Secret File named
+# `datapack.b64` (base64 of a zip of the 6 PDFs + xlsx); the app rehydrates it at startup.
 services:
   - type: web
     name: parcelpilot-ops-copilot
-    runtime: python
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     plan: free
-    buildCommand: |
-      pip install -r backend/requirements.txt
-      cd frontend && npm install && npm run build
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: OPENAI_API_KEY
-        sync: false            # set this in the Render dashboard (Gemini/OpenAI/Groq key)
+        sync: false   # set in the dashboard (your Gemini / OpenAI / Groq key)
       - key: OPENAI_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta/openai/
       - key: MODEL
         value: gemini-3.5-flash-lite
-      - key: PYTHON_VERSION
-        value: "3.11.9"
-      - key: CORS_ORIGINS
-        value: "*"

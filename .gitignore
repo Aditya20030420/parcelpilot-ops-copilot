@@ -10,8 +10,8 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
-# Data pack (candidate data — do not commit if sensitive; keep locally)
-# Comment the next lines out if you want the pack tracked in the repo.
+# Data pack (kept out of the public repo). The deployed app receives it at runtime via a
+# base64 secret (see DATA_PACK_B64 in app/core/knowledge.py).
 data/*.pdf
 data/*.xlsx
 

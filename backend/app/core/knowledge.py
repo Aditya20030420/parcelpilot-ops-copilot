@@ -15,7 +15,43 @@ class Knowledge:
         self.loaded = False
         self.source_dir = settings.data_dir
 
+    def _hydrate_pack(self) -> None:
+        """If the data pack isn't on disk, rehydrate it from a base64 zip provided out of
+        band (so the pack stays out of the public repo). Sources, in order:
+          - env DATA_PACK_B64        (inline base64 of a zip)
+          - env DATA_PACK_B64_FILE   (path to a file containing that base64)
+          - /etc/secrets/datapack.b64  (Render secret file default)
+        Extracts into settings.data_dir.
+        """
+        import base64
+        import io
+        import os
+        import zipfile
+
+        data_dir = settings.data_dir
+        if data_dir.exists() and (any(data_dir.glob("*.pdf")) or any(data_dir.glob("*.xlsx"))):
+            return  # pack already present locally
+
+        b64 = os.environ.get("DATA_PACK_B64")
+        if not b64:
+            candidates = [os.environ.get("DATA_PACK_B64_FILE"), "/etc/secrets/datapack.b64"]
+            for path in candidates:
+                if path and os.path.exists(path):
+                    b64 = open(path, "r", encoding="utf-8").read()
+                    break
+        if not b64:
+            return
+        try:
+            raw = base64.b64decode(b64.strip())
+            data_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                zf.extractall(str(data_dir))
+            print(f"[ingest] rehydrated data pack into {data_dir}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[ingest] failed to rehydrate data pack: {exc}")
+
     def load(self) -> None:
+        self._hydrate_pack()
         data_dir = settings.data_dir
         # Fall back to the generated sample pack if the real data/ folder is empty, so the
         # app is runnable out-of-the-box for a demo. Drop the official pack into data/ to
