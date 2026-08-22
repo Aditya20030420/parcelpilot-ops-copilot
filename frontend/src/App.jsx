@@ -7,8 +7,10 @@ import Login from "./Login.jsx";
 const AUTH_KEY = "pp_auth";
 
 function formatDate(value) {
-  if (!value) return "No snapshot";
-  return value.slice(0, 10);
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value.slice(0, 10);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function tableRows(status, name) {
@@ -309,7 +311,7 @@ export default function App() {
           {mode === "staff" && status?.snapshot_time && (
             <span className="pill" title="All dates and SLAs are measured against this reference time">
               <Icon name="calendar" size={13} />
-              Snapshot {formatDate(status.snapshot_time)}
+              Records dated {formatDate(status.snapshot_time)}
             </span>
           )}
           <button className="newchat" onClick={newChat} disabled={busy} title="Start a new conversation">
@@ -491,7 +493,7 @@ function ContextPanel({ status, mode, currentUser, onAsk, busy }) {
         <div className="context-sub">
           {mode === "customer"
             ? `Only your account (${currentUser.account_id})`
-            : `Everything is up to date as of ${snapshot}`}
+            : `Records dated ${snapshot}`}
         </div>
       </section>
 
