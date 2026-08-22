@@ -6,6 +6,15 @@ import Login from "./Login.jsx";
 
 const AUTH_KEY = "pp_auth";
 
+function initials(name) {
+  const words = (name || "").replace(/\(.*?\)/, "").trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  const w = words[0] || "?";
+  const caps = w.match(/[A-Z]/g);
+  if (caps && caps.length >= 2) return (caps[0] + caps[1]).toUpperCase();
+  return w.slice(0, 2).toUpperCase();
+}
+
 // Turn a tool call into a plain-English step the user can follow.
 function describeTool(name, args = {}) {
   const a = args || {};
@@ -78,12 +87,18 @@ const ROLE_INFO = {
   },
 };
 
-const STAFF_EXAMPLES = [
-  { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Policy + contract" },
-  { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Multi-step + calc" },
-  { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Proactive view" },
-  { q: "For TKT-450, was the historical resolution actually correct?", tag: "Trust check" },
-];
+function staffExamples(role) {
+  const common = [
+    { q: "Can Northstar cancel ORD-1001 without a cancellation fee? Explain why.", tag: "Policy + contract" },
+    { q: "Scan our support activity for anything urgent or unusual right now.", tag: "Proactive view" },
+    { q: "For TKT-450, was the historical resolution actually correct?", tag: "Trust check" },
+  ];
+  // A read-only analyst can't act — show that boundary; agents/managers get a calc example.
+  const fourth = role === "support_analyst"
+    ? { q: "Escalate the security issue on TKT-505 to the security team.", tag: "Access control" }
+    : { q: "ORD-2002 missed pickup due to carrier fault — is a service credit owed, and how much?", tag: "Multi-step + calc" };
+  return [...common, fourth];
+}
 
 const CUSTOMER_EXAMPLES = [
   { q: "Can I cancel my order ORD-1001 without a cancellation fee?", tag: "My order" },
@@ -129,13 +144,19 @@ export default function App() {
     setAuth(null);
   }
 
+  function newChat() {
+    if (busy) return;
+    setMessages([]);
+    sessionRef.current = null;
+  }
+
   if (!auth) return <Login onLogin={handleLogin} />;
 
   const token = auth.token;
   const currentUser = auth.user;
   const mode = currentUser.kind === "customer" ? "customer" : "staff";
   const roleInfo = ROLE_INFO[currentUser.role];
-  const examples = mode === "customer" ? CUSTOMER_EXAMPLES : STAFF_EXAMPLES;
+  const examples = mode === "customer" ? CUSTOMER_EXAMPLES : staffExamples(currentUser.role);
 
   function updateLastAssistant(mutator) {
     setMessages((prev) => {
@@ -172,6 +193,24 @@ export default function App() {
         break;
       case "assistant_text":
         updateLastAssistant((b) => [...b, { kind: "text", text: ev.text }]);
+        break;
+      case "sources":
+        setMessages((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "assistant") {
+              const seen = new Set((next[i].sources || []).map((s) => `${s.source}|${s.page}`));
+              const merged = [...(next[i].sources || [])];
+              for (const s of ev.items || []) {
+                const key = `${s.source}|${s.page}`;
+                if (s.source && !seen.has(key)) { seen.add(key); merged.push(s); }
+              }
+              next[i] = { ...next[i], sources: merged };
+              break;
+            }
+          }
+          return next;
+        });
         break;
       case "confirmation_required":
         updateLastAssistant((b) => [
@@ -250,10 +289,16 @@ export default function App() {
           {mode === "staff" && status?.snapshot_time && (
             <span className="pill" title="All dates and SLAs are measured against this reference time">
               <Icon name="calendar" size={13} />
-              Today is {status.snapshot_time.replace("T", " ").slice(0, 10)}
+              Data as of {status.snapshot_time.slice(0, 10)}
             </span>
           )}
+          <button className="newchat" onClick={newChat} disabled={busy} title="Start a new conversation">
+            New chat
+          </button>
           <div className="who">
+            <span className={`who-avatar ${mode === "customer" ? "customer" : ""}`}>
+              {initials(currentUser.name)}
+            </span>
             <span className="who-name">{currentUser.name}</span>
             <button className="logout" onClick={logout}>Sign out</button>
           </div>
@@ -314,6 +359,7 @@ export default function App() {
                   <span className="thinking"><span className="dot" /><span className="dot" /><span className="dot" /></span>
                 )}
                 {m.blocks.map((b, j) => <Block key={j} b={b} onResolve={resolveAction} />)}
+                {m.sources?.length > 0 && <Sources items={m.sources} />}
               </div>
             </div>
           )
@@ -333,6 +379,32 @@ export default function App() {
           {busy ? "…" : "Send"}
         </button>
       </form>
+    </div>
+  );
+}
+
+const TIER_LABEL = {
+  customer_contract: "Contract",
+  current_sop: "Current SOP",
+  current_policy: "Current policy",
+  product_docs: "Product docs",
+  deprecated_policy: "Deprecated",
+  historical_ticket: "Past ticket",
+};
+
+function Sources({ items }) {
+  return (
+    <div className="sources">
+      <div className="sources-head"><Icon name="file" size={12} /> Sources</div>
+      <div className="sources-list">
+        {items.map((s, i) => (
+          <span key={i} className={`source-chip tier-${s.tier}`} title={`Authority ${s.authority}`}>
+            <span className="source-name">{s.source}</span>
+            {s.page ? <span className="source-page">p.{s.page}</span> : null}
+            <span className="source-tier">{TIER_LABEL[s.tier] || s.tier}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

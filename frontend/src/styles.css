@@ -4,7 +4,7 @@
   --panel-2: #1c2739;
   --border: #26324a;
   --text: #eef2f8;
-  --muted: #93a1bd;
+  --muted: #a7b4ce;
   --accent: #4f8cff;
   --accent-2: #33d69f;
   --danger: #ff6b6b;
@@ -40,15 +40,21 @@ svg { display: block; }
   background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
   padding: 5px 11px; border-radius: 999px; font-size: 12px; white-space: nowrap;
 }
-.who { display: flex; align-items: center; gap: 10px; }
+.who { display: flex; align-items: center; gap: 8px; }
+.who-avatar {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 700; color: #d5e4ff; background: #22406e; border: 1px solid #315081;
+}
+.who-avatar.customer { color: #b9f4da; background: #14402f; border-color: #24503f; }
 .who-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.logout {
+.logout, .newchat {
   background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
   border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer;
   transition: border-color 160ms ease, color 160ms ease;
 }
+.newchat:disabled { opacity: 0.5; cursor: default; }
 @media (hover: hover) and (pointer: fine) {
-  .logout:hover { border-color: var(--accent); color: var(--text); }
+  .logout:hover, .newchat:not(:disabled):hover { border-color: var(--accent); color: var(--text); }
 }
 
 .role-switch { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); }
@@ -87,10 +93,10 @@ svg { display: block; }
 .example:hover { border-color: var(--accent); }
 .example:active { transform: scale(0.99); }
 .example-tag {
-  flex: none; font-size: 11px; color: var(--muted); background: var(--panel-2);
+  flex: none; font-size: 11px; color: #c3cee2; background: var(--panel-2);
   border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px;
 }
-.empty-hint { font-size: 12.5px; line-height: 1.6; opacity: 0.85; }
+.empty-hint { font-size: 12.5px; line-height: 1.6; color: var(--muted); }
 
 /* Messages */
 .msg { display: flex; gap: 10px; animation: msg-in 220ms var(--ease-out) both; }
@@ -151,6 +157,25 @@ svg { display: block; }
   border-radius: 50%; animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Sources / citations */
+.sources { margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 9px; animation: fade-in 240ms ease both; }
+.sources-head { display: flex; align-items: center; gap: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 7px; }
+.sources-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.source-chip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px;
+  background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--muted);
+  border-radius: 7px; padding: 4px 8px; color: #cdd8ee;
+}
+.source-name { font-weight: 600; }
+.source-page { color: var(--muted); }
+.source-tier { font-size: 10px; color: var(--muted); background: #0e1420; border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
+.source-chip.tier-customer_contract { border-left-color: #33d69f; }
+.source-chip.tier-current_sop { border-left-color: #4f8cff; }
+.source-chip.tier-current_policy { border-left-color: #6ea0ff; }
+.source-chip.tier-product_docs { border-left-color: #b58bff; }
+.source-chip.tier-deprecated_policy { border-left-color: #ff6b6b; }
+.source-chip.tier-historical_ticket { border-left-color: #ffb020; }
 
 /* Confirmation card */
 .confirm-card {

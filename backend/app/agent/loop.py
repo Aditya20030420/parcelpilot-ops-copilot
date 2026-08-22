@@ -156,6 +156,15 @@ class AgentRunner:
                     result = dispatch_read(self.ctx, name, args)
                     yield {"type": "tool_result", "name": name,
                            "summary": _summarise_result(name, result)}
+                    # Surface document citations to the UI so answers show their sources.
+                    if name == "search_documents" and isinstance(result, dict):
+                        items = [
+                            {"source": r.get("source"), "page": r.get("page"),
+                             "tier": r.get("tier"), "authority": r.get("authority")}
+                            for r in (result.get("results") or [])[:3]
+                        ]
+                        if items:
+                            yield {"type": "sources", "items": items}
                     self.session.messages.append(_tool_msg(tc.id, result))
 
             # After preparing an action, let the model produce its closing summary, then it
