@@ -448,9 +448,14 @@ svg { display: block; }
 }
 
 @media (max-width: 720px) {
-  .topbar { align-items: flex-start; flex-direction: column; }
-  .topbar-right { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  .who-name { display: none; }
+  .topbar { align-items: center; gap: 8px; padding: 10px 14px; }
+  .topbar-right { justify-content: flex-end; gap: 8px; flex: none; }
+  .who-name { display: none; }        /* name is redundant with the role banner below */
+  .who-avatar { display: none; }
+  .pill { display: none; }            /* date still shown in the sidebar on wider screens */
+  .newchat span { display: none; }    /* icon-only to save space */
+  .newchat { padding: 7px 9px; }
+  .title { font-size: 15px; }
   .examples { grid-template-columns: 1fr; }
   .context-panel { display: none; }
   .chat { padding: 18px 14px; }
