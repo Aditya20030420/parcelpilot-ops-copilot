@@ -75,6 +75,23 @@ _ACTION_PERM = {
 
 
 # --- routes ----------------------------------------------------------------
+@app.get("/healthz")
+def healthz():
+    """Lightweight liveness/readiness probe for Render and uptime monitors.
+
+    Returns 200 when the process is up and the knowledge base has loaded; 503 otherwise so
+    a monitor can distinguish "starting/broken" from "ready"."""
+    ready = knowledge.loaded and knowledge.docs.ready
+    payload = {
+        "status": "ok" if ready else "starting",
+        "ready": ready,
+        "documents": len(knowledge.docs.chunks),
+        "tables": len(knowledge.data.tables),
+        "snapshot_time": knowledge.snapshot_time.isoformat() if knowledge.loaded else None,
+    }
+    return JSONResponse(status_code=200 if ready else 503, content=payload)
+
+
 @app.get("/api/status")
 def status():
     return knowledge.status()
