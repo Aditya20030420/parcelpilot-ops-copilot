@@ -94,7 +94,7 @@ export default function Login({ onLogin }) {
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. marco or northstar"
+                  placeholder="e.g. diego or northstar"
                   autoFocus
                   autoComplete="username"
                 />

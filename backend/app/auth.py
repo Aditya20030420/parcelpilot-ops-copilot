@@ -52,7 +52,7 @@ _ALL_READ = {Perm.READ_DOCS, Perm.READ_DATA, Perm.DETECT_ISSUES}
 USERS: dict[str, User] = {
     "token-analyst": User(
         id="u_analyst",
-        name="Riya Sharma",
+        name="Aisha Khan",
         role="support_analyst",
         # Read-only analyst: can see data and the ops view, but cannot change anything.
         permissions=frozenset(_ALL_READ),
@@ -60,7 +60,7 @@ USERS: dict[str, User] = {
     ),
     "token-agent": User(
         id="u_agent",
-        name="Marco Ferrari",
+        name="Diego Alvarez",
         role="support_agent",
         permissions=frozenset(_ALL_READ | {Perm.READ_PII, Perm.ACT_TICKET, Perm.ACT_ESCALATE}),
         # Can approve small good-will credits; larger ones must be escalated.
@@ -68,7 +68,7 @@ USERS: dict[str, User] = {
     ),
     "token-manager": User(
         id="u_manager",
-        name="Dana Okonkwo",
+        name="Nina Petrova",
         role="ops_manager",
         permissions=frozenset(
             _ALL_READ
@@ -80,17 +80,17 @@ USERS: dict[str, User] = {
     # their own data + their agreement + general policy, and raise an escalation to a human.
     # They can never see other accounts, internal ops views, or take internal actions.
     "token-cust-northstar": User(
-        id="cust_northstar", name="Priya Nair — Northstar Logistics", role="customer",
+        id="cust_northstar", name="Rohan Verma — Northstar Logistics", role="customer",
         kind="customer", account_id="ACCT-001", account_name="Northstar Logistics",
         permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
     ),
     "token-cust-lumenworks": User(
-        id="cust_lumenworks", name="Sam Cole — LumenWorks", role="customer",
+        id="cust_lumenworks", name="Emma Clarke — LumenWorks", role="customer",
         kind="customer", account_id="ACCT-002", account_name="LumenWorks",
         permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
     ),
     "token-cust-beacon": User(
-        id="cust_beacon", name="Leah Ortiz — Beacon Retail", role="customer",
+        id="cust_beacon", name="Tariq Hassan — Beacon Retail", role="customer",
         kind="customer", account_id="ACCT-003", account_name="Beacon Retail",
         permissions=frozenset({Perm.READ_DOCS, Perm.READ_DATA, Perm.READ_PII, Perm.ACT_ESCALATE}),
     ),
@@ -104,9 +104,9 @@ DEFAULT_TOKEN = "token-agent"
 DEMO_PASSWORD = "demo123"
 LOGINS: dict[str, dict] = {
     # Staff
-    "riya":       {"token": "token-analyst",         "password": DEMO_PASSWORD},
-    "marco":      {"token": "token-agent",           "password": DEMO_PASSWORD},
-    "dana":       {"token": "token-manager",         "password": DEMO_PASSWORD},
+    "aisha":      {"token": "token-analyst",         "password": DEMO_PASSWORD},
+    "diego":      {"token": "token-agent",           "password": DEMO_PASSWORD},
+    "nina":       {"token": "token-manager",         "password": DEMO_PASSWORD},
     # Customers (sign in with their account handle)
     "northstar":  {"token": "token-cust-northstar",  "password": DEMO_PASSWORD},
     "lumenworks": {"token": "token-cust-lumenworks", "password": DEMO_PASSWORD},
@@ -128,9 +128,9 @@ def demo_login_hints() -> dict:
     return {
         "password": DEMO_PASSWORD,
         "staff": [
-            {"username": "riya", "name": "Riya Sharma", "desc": "Support Analyst · read-only"},
-            {"username": "marco", "name": "Marco Ferrari", "desc": "Support Agent"},
-            {"username": "dana", "name": "Dana Okonkwo", "desc": "Ops Manager"},
+            {"username": "aisha", "name": "Aisha Khan", "desc": "Support Analyst · read-only"},
+            {"username": "diego", "name": "Diego Alvarez", "desc": "Support Agent"},
+            {"username": "nina", "name": "Nina Petrova", "desc": "Ops Manager"},
         ],
         "customers": [
             {"username": "northstar", "name": "Northstar Logistics", "desc": "Enterprise plan"},

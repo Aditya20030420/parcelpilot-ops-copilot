@@ -8,7 +8,8 @@ follow-up tasks) — always behind an explicit confirmation step.
 
 Built for the CalQuity AI Engineer first-round assessment.
 
-> **Both user contexts are built**, switchable from a Customer/Staff toggle in the UI:
+> **Both user contexts are built.** Users sign in on a login page and are routed to the
+> right one automatically — staff to the ops copilot, customers to their own support chat:
 > - **Customer-facing support** — answers a customer's questions about their own orders,
 >   cancellations, credits and agreement, and escalates to a human when needed. Hard-scoped
 >   to the signed-in customer's account (enforced in the data layer).
@@ -96,9 +97,9 @@ the internal ops copilot and customers to their own support chat. All demo passw
 `demo123`, and the login page lists the accounts (click one to fill it in):
 
 **Staff logins** (internal ops copilot):
-- `riya` — Support Analyst: read-only (docs, data, ops view); actions denied.
-- `marco` — Support Agent: read + PII + can prepare actions; credit approval limit ₹2,000.
-- `dana` — Ops Manager: everything, incl. larger approvals (₹25,000).
+- `aisha` — Support Analyst: read-only (docs, data, ops view); actions denied.
+- `diego` — Support Agent: read + PII + can prepare actions; credit approval limit ₹2,000.
+- `nina` — Ops Manager: everything, incl. larger approvals (₹25,000).
 
 **Customer logins** (own-account support chat) — `northstar`, `lumenworks`, `beacon`. Each is
 hard-scoped to its own account: sign in as `northstar` and ask *"What is the status of order
@@ -114,8 +115,8 @@ Example prompts:
 - *"What changed between the current support policy and the deprecated one?"*
 - *"For TKT-450, was the historical resolution correct?"* → the agent should distrust the
   stale ticket note and verify against current policy/contract.
-- As Riya (analyst): *"Escalate the security issue on TKT-505"* → watch it get **denied** in
-  the tool layer; switch to Marco/Dana and it prepares an escalation for confirmation.
+- As `aisha` (analyst): *"Escalate the security issue on TKT-505"* → watch it get **denied**
+  in the tool layer; sign in as `diego`/`nina` and it prepares an escalation for confirmation.
 
 `GET /api/audit` returns the side effects any confirmed action committed (handy for the demo).
 
