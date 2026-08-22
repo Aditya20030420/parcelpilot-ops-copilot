@@ -347,7 +347,7 @@ export default function App() {
             <div className="subtitle">
               {mode === "customer"
                 ? "Help with your orders, cancellations, credits & account"
-                : "Ask about policies, contracts, orders & tickets — in plain English"}
+                : "Internal support & operations assistant"}
             </div>
           </div>
         </div>
