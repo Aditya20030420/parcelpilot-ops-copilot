@@ -156,9 +156,8 @@ async def confirm(req: ConfirmRequest, authorization: str | None = Header(defaul
 
         if not req.approved:
             action.status = "cancelled"
-            injected = (f"[SYSTEM] The user CANCELLED the prepared action "
-                        f"'{action.tool_name}' ({action.summary}). Acknowledge and ask if "
-                        f"they want to change anything.")
+            ack = "No problem — I've cancelled that. Nothing was changed. Let me know if you'd like to adjust anything."
+            note = f"[SYSTEM] The user cancelled the prepared action '{action.tool_name}' ({action.summary})."
         else:
             # Re-enforce authorization at execution time, not just at prepare time.
             perm = _ACTION_PERM.get(action.tool_name)
@@ -170,15 +169,42 @@ async def confirm(req: ConfirmRequest, authorization: str | None = Header(defaul
             action.status = "confirmed"
             yield _sse({"type": "action_executed", "tool_name": action.tool_name,
                         "result": result})
-            injected = (f"[SYSTEM] The user CONFIRMED action '{action.tool_name}'. It has "
-                        f"been executed with result: {json.dumps(result, default=str)}. "
-                        f"Acknowledge briefly and continue if further steps remain.")
+            ack = _ack_text(action.tool_name, result)
+            note = (f"[SYSTEM] The user confirmed action '{action.tool_name}'; executed with "
+                    f"result: {json.dumps(result, default=str)}.")
 
-        runner = AgentRunner(ctx, session)
-        async for event in runner.run(injected):
-            yield _sse(event)
+        # Acknowledge deterministically — no extra LLM round-trip, so confirmation is instant.
+        # Still record the outcome in session history so later turns keep context.
+        session.messages.append({"role": "user", "content": note})
+        session.messages.append({"role": "assistant", "content": ack})
+        yield _sse({"type": "assistant_text", "text": ack})
+        yield _sse({"type": "done"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+def _ack_text(tool_name: str, result: dict) -> str:
+    """Human-friendly confirmation, generated in code (no LLM call = instant)."""
+    if tool_name == "create_escalation":
+        eid = result.get("escalation_id", "")
+        acct = result.get("account") or "the account"
+        prio = result.get("priority", "normal")
+        return (f"Done — escalation **{eid}** has been created for {acct} "
+                f"({prio} priority). The team will pick it up from here.")
+    if tool_name == "update_ticket":
+        tid = result.get("ticket_id", "")
+        bits = []
+        if result.get("new_status"):
+            bits.append(f"status set to {result['new_status']}")
+        if result.get("comment"):
+            bits.append("comment added")
+        detail = "; ".join(bits) or "updated"
+        return f"Done — ticket **{tid}** {detail}."
+    if tool_name == "create_follow_up_task":
+        tid = result.get("task_id", "")
+        due = result.get("due_at", "")
+        return f"Done — follow-up task **{tid}** created" + (f", due {due}." if due else ".")
+    return "Done — the action has been completed."
 
 
 def _token(authorization: str | None) -> str | None:
