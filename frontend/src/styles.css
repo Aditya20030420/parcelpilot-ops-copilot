@@ -458,8 +458,7 @@ svg { display: block; }
 .login-demo { margin-top: 24px; }
 .demo-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11.5px; margin-bottom: 14px; }
 .demo-divider::before, .demo-divider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
-.demo-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
-.demo-col { min-width: 0; }
+.demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .demo-col-head { display: flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
 .demo-row {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
