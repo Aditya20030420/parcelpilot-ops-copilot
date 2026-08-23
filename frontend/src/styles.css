@@ -18,6 +18,52 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out for UI motion */
 }
 
+/* Light theme — tokens plus the opaque-dark surfaces that don't use tokens. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel-2: #f1f4f9;
+  --panel-3: #e8ecf3;
+  --panel-soft: #f4f7fb;
+  --border: #d9e0ea;
+  --border-soft: #e6ebf2;
+  --text: #17202e;
+  --muted: #566072;
+  --accent: #0d9488;
+  --accent-strong: #0f766e;
+  --accent-2: #c2822c;
+  --info: #2563eb;
+  --danger: #dc2626;
+  --warn: #b45309;
+  --user: #1d5b69;
+}
+:root[data-theme="light"] body {
+  background: linear-gradient(180deg, #f7f9fc 0%, #eef1f6 55%, #e9edf4 100%);
+}
+:root[data-theme="light"] .app { box-shadow: 0 20px 70px rgba(20,30,50,0.08); border-left-color: var(--border); border-right-color: var(--border); }
+:root[data-theme="light"] .topbar { background: rgba(255,255,255,0.92); }
+:root[data-theme="light"] .pill { background: var(--panel-2); color: var(--muted); }
+:root[data-theme="light"] .context-panel { background: linear-gradient(180deg, #ffffff, #f6f8fc); }
+:root[data-theme="light"] .metric { background: var(--panel-2); }
+:root[data-theme="light"] .msg.user .bubble { color: #ffffff; }        /* white on the teal bubble */
+:root[data-theme="light"] .text code,
+:root[data-theme="light"] .source-tier,
+:root[data-theme="light"] .tool-args { background: var(--panel-2); color: var(--text); border-color: var(--border); }
+:root[data-theme="light"] .example:hover { background: #eef2f7; }
+:root[data-theme="light"] .role-banner { background: var(--panel-2); }
+:root[data-theme="light"] .empty-icon { color: var(--accent); }
+/* Surfaces the theme refresh hardcoded dark — re-light them for the light theme. */
+:root[data-theme="light"] .app { background: #eef1f6; }
+:root[data-theme="light"] .msg.assistant .bubble { background: var(--panel); }
+:root[data-theme="light"] .example { background: var(--panel); }
+:root[data-theme="light"] .signal { background: var(--panel-2); }
+:root[data-theme="light"] .tool-step { background: var(--panel-2); }
+:root[data-theme="light"] .source-chip { background: var(--panel-2); }
+:root[data-theme="light"] .text code, :root[data-theme="light"] .source-tier { background: var(--panel-2); }
+:root[data-theme="light"] .confirm-card { background: #fdf6ea; }
+:root[data-theme="light"] .confirm-card.confirmed { background: #e9f9f1; }
+:root[data-theme="light"] .newchat, :root[data-theme="light"] .logout, :root[data-theme="light"] .iconbtn { background: var(--panel-2); }
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
@@ -67,6 +113,12 @@ svg { display: block; }
   transition: border-color 160ms ease, color 160ms ease;
 }
 .newchat:disabled { opacity: 0.5; cursor: default; }
+.iconbtn {
+  display: inline-grid; place-items: center; width: 34px; height: 34px;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 8px; cursor: pointer; transition: border-color 160ms ease, color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) { .iconbtn:hover { border-color: var(--accent); color: var(--text); } }
 @media (hover: hover) and (pointer: fine) {
   .logout:hover, .newchat:not(:disabled):hover { border-color: var(--accent); color: var(--text); }
 }
@@ -224,6 +276,16 @@ svg { display: block; }
 .text-stale { opacity: 0.45; transition: opacity 200ms ease; }
 .error-row { display: flex; align-items: flex-start; gap: 8px; }
 .error-row svg { flex: none; margin-top: 2px; }
+
+/* Guardrail notes: prompt-injection warning + hallucinated-ID warning */
+.guard-note {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.5;
+  padding: 8px 11px; border-radius: 9px; border: 1px solid var(--warn);
+  background: rgba(180,83,9,0.10); color: var(--text);
+}
+.guard-note svg { flex: none; margin-top: 2px; color: var(--warn); }
+.guard-note.security { border-color: var(--info); background: rgba(37,99,235,0.10); }
+.guard-note.security svg { color: var(--info); }
 
 /* Thinking dots */
 .thinking { display: inline-flex; gap: 4px; align-items: center; height: 18px; }

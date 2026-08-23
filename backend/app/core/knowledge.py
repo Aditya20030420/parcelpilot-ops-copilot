@@ -14,6 +14,7 @@ class Knowledge:
         self.data = StructuredStore()
         self.loaded = False
         self.source_dir = settings.data_dir
+        self._known_ids: set[str] | None = None
 
     def _hydrate_pack(self) -> None:
         """If the data pack isn't on disk, rehydrate it from a base64 zip provided out of
@@ -71,6 +72,23 @@ class Knowledge:
             for xlsx in data_dir.glob("*.xlsx"):
                 self.data.load_file(xlsx)
         self.loaded = True
+
+    def known_ids(self) -> set[str]:
+        """All real order/ticket/account IDs (and account names) found in the data, cached.
+        Used to catch IDs the model might invent."""
+        if self._known_ids is None:
+            import re
+
+            ids: set[str] = set()
+            for tbl in self.data.tables.values():
+                for row in tbl.rows:
+                    for col, val in row.items():
+                        if val in (None, ""):
+                            continue
+                        if re.search(r"(_id$|^id$|order|ticket|account)", col, re.I):
+                            ids.add(str(val).strip())
+            self._known_ids = ids
+        return self._known_ids
 
     @property
     def snapshot_time(self) -> dt.datetime:

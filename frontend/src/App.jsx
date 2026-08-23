@@ -173,6 +173,11 @@ export default function App() {
     }
   });
   const [status, setStatus] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem("pp_theme") || "dark");
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("pp_theme", theme);
+  }, [theme]);
   // Restore this user's conversation from the browser so a refresh (or re-login) keeps the
   // thread. Keyed per token so a customer and staff never share history.
   const [messages, setMessages] = useState(() => loadChat(getSavedToken()).messages);
@@ -259,6 +264,13 @@ export default function App() {
         break;
       case "assistant_text":
         updateLastAssistant((b) => [...b, { kind: "text", text: ev.text }]);
+        break;
+      case "security_note":
+        updateLastAssistant((b) => [...b, { kind: "guard", variant: "security", text: ev.text }]);
+        break;
+      case "id_warning":
+        updateLastAssistant((b) => [...b, { kind: "guard", variant: "id",
+          text: `Heads up: I referenced ${ev.ids.join(", ")}, which I couldn't find in the data. Please double-check ${ev.ids.length > 1 ? "these IDs" : "this ID"}.` }]);
         break;
       case "sources":
         setMessages((prev) => {
@@ -358,6 +370,11 @@ export default function App() {
               Records dated {formatDate(status.snapshot_time)}
             </span>
           )}
+          <button className="iconbtn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                  aria-label="Toggle theme">
+            <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+          </button>
           <button className="newchat" onClick={newChat} disabled={busy} title="Start a new conversation">
             <Icon name="message" size={14} />
             <span>New chat</span>
@@ -623,6 +640,14 @@ function Block({ b, onResolve, stale }) {
     return (
       <div className={`text ${stale ? "text-stale" : ""}`}
            dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />
+    );
+  }
+  if (b.kind === "guard") {
+    return (
+      <div className={`guard-note ${b.variant}`}>
+        <Icon name={b.variant === "security" ? "shield" : "alert"} size={14} />
+        <span>{b.text}</span>
+      </div>
     );
   }
   if (b.kind === "confirm") {

@@ -114,6 +114,13 @@ class AgentRunner:
 
             if msg.content and msg.content.strip():
                 yield {"type": "assistant_text", "text": msg.content}
+                # ID validation: flag any order/ticket/account ID the model stated that isn't
+                # in the data (likely hallucinated).
+                from ..core.guards import unknown_ids
+
+                unk = unknown_ids(msg.content, self.ctx.knowledge.known_ids())
+                if unk:
+                    yield {"type": "id_warning", "ids": unk}
 
             if not tool_calls:
                 yield {"type": "done"}
@@ -156,6 +163,10 @@ class AgentRunner:
                     result = dispatch_read(self.ctx, name, args)
                     yield {"type": "tool_result", "name": name,
                            "summary": _summarise_result(name, result)}
+                    # Surface a prompt-injection warning if a retrieved excerpt tried to
+                    # steer the model.
+                    if isinstance(result, dict) and result.get("security_note"):
+                        yield {"type": "security_note", "text": result["security_note"]}
                     # Surface document citations to the UI so answers show their sources.
                     if name == "search_documents" and isinstance(result, dict):
                         items = [
