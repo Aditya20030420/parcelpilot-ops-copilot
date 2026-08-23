@@ -418,7 +418,7 @@ svg { display: block; }
 
 .login-panel { display: grid; place-items: center; padding: 32px 24px; }
 .login-box {
-  width: 100%; max-width: 380px; animation: card-in 260ms var(--ease-out) both;
+  width: 100%; max-width: 440px; animation: card-in 260ms var(--ease-out) both;
 }
 .login-box.shake { animation: shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 @keyframes shake {
@@ -458,7 +458,8 @@ svg { display: block; }
 .login-demo { margin-top: 24px; }
 .demo-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11.5px; margin-bottom: 14px; }
 .demo-divider::before, .demo-divider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
-.demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.demo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.demo-col { min-width: 0; }
 .demo-col-head { display: flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
 .demo-row {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
@@ -475,7 +476,7 @@ svg { display: block; }
 .demo-row.customer .demo-avatar { color: #fff0c7; background: #5a3d17; border-color: #9d6c25; }
 .demo-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .demo-user { font-size: 12.5px; font-weight: 600; color: var(--text); }
-.demo-sub { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.demo-sub { font-size: 11px; color: var(--muted); line-height: 1.35; }
 .demo-arrow { color: var(--muted); opacity: 0; transform: translateX(-4px); transition: opacity 150ms ease, transform 150ms ease; }
 @media (hover: hover) and (pointer: fine) {
   .demo-row:hover { border-color: rgba(45,212,191,0.7); background: #242d39; }
