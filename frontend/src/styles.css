@@ -20,30 +20,30 @@
 
 /* Light theme — tokens plus the opaque-dark surfaces that don't use tokens. */
 :root[data-theme="light"] {
-  --bg: #eef1f6;
-  --panel: #ffffff;
-  --panel-2: #f1f4f9;
-  --panel-3: #e8ecf3;
-  --panel-soft: #f4f7fb;
-  --border: #d9e0ea;
-  --border-soft: #e6ebf2;
-  --text: #17202e;
-  --muted: #566072;
+  --bg: #e4e8ee;
+  --panel: #eef1f6;        /* soft off-white, not pure white */
+  --panel-2: #e7ebf2;
+  --panel-3: #dfe4ec;
+  --panel-soft: #eaeef4;
+  --border: #ccd5e1;
+  --border-soft: #d6dde8;
+  --text: #1b2431;
+  --muted: #5a6474;
   --accent: #0d9488;
   --accent-strong: #0f766e;
-  --accent-2: #c2822c;
+  --accent-2: #b8792a;
   --info: #2563eb;
   --danger: #dc2626;
-  --warn: #b45309;
+  --warn: #a8560a;
   --user: #1d5b69;
 }
 :root[data-theme="light"] body {
-  background: linear-gradient(180deg, #f7f9fc 0%, #eef1f6 55%, #e9edf4 100%);
+  background: linear-gradient(180deg, #eaedf3 0%, #e4e8ee 55%, #dfe3ea 100%);
 }
 :root[data-theme="light"] .app { box-shadow: 0 20px 70px rgba(20,30,50,0.08); border-left-color: var(--border); border-right-color: var(--border); }
-:root[data-theme="light"] .topbar { background: rgba(255,255,255,0.92); }
+:root[data-theme="light"] .topbar { background: rgba(233,237,243,0.92); }
 :root[data-theme="light"] .pill { background: var(--panel-2); color: var(--muted); }
-:root[data-theme="light"] .context-panel { background: linear-gradient(180deg, #ffffff, #f6f8fc); }
+:root[data-theme="light"] .context-panel { background: linear-gradient(180deg, #eef1f6, #e8ecf3); }
 :root[data-theme="light"] .metric { background: var(--panel-2); }
 :root[data-theme="light"] .msg.user .bubble { color: #ffffff; }        /* white on the teal bubble */
 :root[data-theme="light"] .text code,
@@ -53,7 +53,7 @@
 :root[data-theme="light"] .role-banner { background: var(--panel-2); }
 :root[data-theme="light"] .empty-icon { color: var(--accent); }
 /* Surfaces the theme refresh hardcoded dark — re-light them for the light theme. */
-:root[data-theme="light"] .app { background: #eef1f6; }
+:root[data-theme="light"] .app { background: #e4e8ee; }
 :root[data-theme="light"] .msg.assistant .bubble { background: var(--panel); }
 :root[data-theme="light"] .example { background: var(--panel); }
 :root[data-theme="light"] .signal { background: var(--panel-2); }
@@ -64,7 +64,7 @@
 :root[data-theme="light"] .confirm-card.confirmed { background: #e9f9f1; }
 :root[data-theme="light"] .newchat, :root[data-theme="light"] .logout, :root[data-theme="light"] .iconbtn { background: var(--panel-2); }
 /* Chat workspace + remaining dark surfaces/text for light theme */
-:root[data-theme="light"] .workspace { background: linear-gradient(180deg, #f3f6fa 0%, #eef1f6 100%); }
+:root[data-theme="light"] .workspace { background: linear-gradient(180deg, #e8ecf2 0%, #e2e6ed 100%); }
 :root[data-theme="light"] .role-banner { background: var(--panel-2); }
 :root[data-theme="light"] .role-tag { background: rgba(13,148,136,0.12); color: #0f766e; border-color: rgba(13,148,136,0.3); }
 :root[data-theme="light"] .role-banner.customer .role-tag { background: rgba(194,130,44,0.16); color: #8a4b0a; border-color: rgba(194,130,44,0.36); }
