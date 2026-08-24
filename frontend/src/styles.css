@@ -420,16 +420,16 @@ svg { display: block; }
 .hero-brand, .hero-body, .hero-foot { position: relative; z-index: 1; }
 .hero-brand { display: flex; align-items: center; gap: 11px; }
 .hero-logo { color: var(--accent); display: inline-flex; }
-.hero-name { font-weight: 700; font-size: 18px; letter-spacing: 0.2px; }
-.hero-body h1 { font-size: 30px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.4px; max-width: 12ch; }
-.hero-body p { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 42ch; margin: 0 0 22px; }
+.hero-name { font-weight: 700; font-size: 18px; letter-spacing: 0.2px; color: #f4f7f8; }
+.hero-body h1 { font-size: 30px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.4px; max-width: 12ch; color: #f4f7f8; }
+.hero-body p { color: #b7c4da; font-size: 14px; line-height: 1.6; max-width: 42ch; margin: 0 0 22px; }
 .hero-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .hero-points li { display: flex; align-items: center; gap: 11px; font-size: 13.5px; color: #cdd8ee; }
 .hp-ic {
   flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
   background: rgba(53,178,127,0.12); border: 1px solid #2d5a43; color: var(--accent);
 }
-.hero-foot { color: var(--muted); font-size: 12px; }
+.hero-foot { color: #8fa0bd; font-size: 12px; }
 
 .login-panel { display: grid; place-items: center; padding: 32px 24px; }
 .login-box {
