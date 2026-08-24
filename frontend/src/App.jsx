@@ -175,9 +175,10 @@ export default function App() {
   const [status, setStatus] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("pp_theme") || "dark");
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    // The login screen is always dark (branded entry); the chosen theme applies once inside.
+    document.documentElement.dataset.theme = auth ? theme : "dark";
     localStorage.setItem("pp_theme", theme);
-  }, [theme]);
+  }, [theme, auth]);
   // Restore this user's conversation from the browser so a refresh (or re-login) keeps the
   // thread. Keyed per token so a customer and staff never share history.
   const [messages, setMessages] = useState(() => loadChat(getSavedToken()).messages);
