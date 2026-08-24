@@ -556,3 +556,37 @@ svg { display: block; }
   .example:active, .confirm-yes:active, .confirm-no:active,
   .composer button:active:not(:disabled) { transform: none; }
 }
+
+/* ---- Animated SVG icons ---------------------------------------------------
+   Idle motion on branded/decorative icons, a pulse on active tool icons, and
+   hover micro-interactions on interactive icons. All reduced-motion aware. */
+svg { transition: transform 220ms var(--ease-out), color 160ms ease; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo svg { animation: icon-float 4s ease-in-out infinite; transform-origin: 50% 60%; }
+  .avatar svg { animation: icon-bob 3.2s ease-in-out infinite; }
+  .empty-icon svg { animation: icon-pulse 2.8s ease-in-out infinite; }
+  .hero-logo svg { animation: icon-float 4.5s ease-in-out infinite; }
+  .tool-step.running .tool-icon svg { animation: icon-throb 1s ease-in-out infinite; }
+  .thinking + .tool-icon svg { animation: none; }
+  .guard-note svg { animation: icon-pop 320ms var(--ease-out) both; }
+  .confirm-head svg { animation: icon-wobble 2.4s ease-in-out infinite; }
+  .section-title svg { animation: icon-pulse 4s ease-in-out infinite; }
+}
+
+@keyframes icon-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes icon-bob   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes icon-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes icon-throb { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.18); opacity: 0.7; } }
+@keyframes icon-pop   { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes icon-wobble{ 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+
+/* Hover micro-interactions (pointer devices only) */
+@media (hover: hover) and (pointer: fine) {
+  .iconbtn:hover svg { transform: rotate(35deg) scale(1.1); }
+  .newchat:not(:disabled):hover svg, .logout:hover svg, .pw-toggle:hover svg { transform: scale(1.18); }
+  .composer button:not(:disabled):hover svg, .signin-btn:not(:disabled):hover svg { transform: translate(2px, -2px) scale(1.05); }
+  .example:hover svg, .signal:not(:disabled):hover svg, .demo-row:not(:disabled):hover svg { transform: scale(1.12); }
+  .source-chip:hover svg { transform: scale(1.15); }
+  .role-tag svg { transition: transform 220ms var(--ease-out); }
+}
