@@ -64,7 +64,13 @@
 :root[data-theme="light"] .confirm-card.confirmed { background: #e9f9f1; }
 :root[data-theme="light"] .newchat, :root[data-theme="light"] .logout, :root[data-theme="light"] .iconbtn { background: var(--panel-2); }
 /* Chat workspace + remaining dark surfaces/text for light theme */
-:root[data-theme="light"] .workspace { background: linear-gradient(180deg, #e8ecf2 0%, #e2e6ed 100%); }
+:root[data-theme="light"] .workspace {
+  background:
+    linear-gradient(rgba(30,45,70,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,45,70,0.04) 1px, transparent 1px),
+    linear-gradient(180deg, #e8ecf2 0%, #e2e6ed 100%);
+  background-size: 34px 34px, 34px 34px, auto;
+}
 :root[data-theme="light"] .role-banner { background: var(--panel-2); }
 :root[data-theme="light"] .role-tag { background: rgba(13,148,136,0.12); color: #0f766e; border-color: rgba(13,148,136,0.3); }
 :root[data-theme="light"] .role-banner.customer .role-tag { background: rgba(194,130,44,0.16); color: #8a4b0a; border-color: rgba(194,130,44,0.36); }
