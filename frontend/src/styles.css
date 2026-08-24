@@ -477,7 +477,7 @@ svg { display: block; }
 .demo-col { min-width: 0; }
 .demo-col-head { display: flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
 .demo-row {
-  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 9px; width: 100%; min-height: 62px; text-align: left;
   background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
   padding: 8px 9px; margin-bottom: 8px; cursor: pointer;
   transition: border-color 150ms ease, transform 120ms var(--ease-out), background-color 150ms ease;
